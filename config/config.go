@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -25,25 +24,21 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	// First intent to charge the variable from the .env (this is only for testing, the code use docker secret for production)
-	_ = godotenv.Load(".env") // ignore the error
-
-	env := getEnvOrSecret("APP_ENV", "development")
+	env := getEnvOrSecret("APP_ENV", "")
 	log.Println("the current environment is: ", env)
 
 	clientTimeout, _ := time.ParseDuration(getEnvOrSecret("CLIENT_TIMEOUT", "10s"))
 
 	c := Config{
 		ServerPort:            getEnvOrSecret("SERVER_PORT", ""),
-		AmadeusAPIKey:         getEnvOrSecret("AMADEUS_API_KEY", "KEY"),
+		AmadeusAPIKey:         getEnvOrSecret("AMADEUS_API_KEY", "SECRET"),
 		AmadeusAPISecret:      getEnvOrSecret("AMADEUS_API_SECRET", "SECRET"),
 		AmadeusBaseURL:        getEnvOrSecret("AMADEUS_BASE_URL", ""),
-		SkyScannerRapidAPIKey: getEnvOrSecret("SKYSCANNER_API_KEY", "KEY"),
+		SkyScannerRapidAPIKey: getEnvOrSecret("SKYSCANNER_API_KEY", "SECRET"),
 		SkyScannerBaseURL:     getEnvOrSecret("SKYSCANNER_BASE_URL", ""),
 		ClientTimeout:         clientTimeout,
 	}
-	err := validate(c)
-	if err != nil {
+	if err := validate(c); err != nil {
 		return nil, err
 	}
 	return &c, nil
@@ -51,13 +46,13 @@ func Load() (*Config, error) {
 
 func getEnvOrSecret(key, defaultValue string) string {
 	// if it's not a secret info the variable should be in the environment
-	if defaultValue != "KEY" && defaultValue != "SECRET" {
+	if defaultValue != "SECRET" {
 		if value, exists := os.LookupEnv(key); exists {
 			return value
 		}
 	}
 
-	// code intent to read docker secret
+	// intent to read docker secret
 	if secret, err := readDockerSecret(key); err == nil && secret != "" {
 		return secret
 	}
