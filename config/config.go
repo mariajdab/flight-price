@@ -34,11 +34,11 @@ func Load() (*Config, error) {
 	clientTimeout, _ := time.ParseDuration(getEnvOrSecret("CLIENT_TIMEOUT", "10s"))
 
 	c := Config{
-		ServerPort:            getEnvOrSecret("SERVER_PORT", "8080"),
-		AmadeusAPIKey:         getEnvOrSecret("AMADEUS_API_KEY", ""),
-		AmadeusAPISecret:      getEnvOrSecret("AMADEUS_API_SECRET", ""),
+		ServerPort:            getEnvOrSecret("SERVER_PORT", ""),
+		AmadeusAPIKey:         getEnvOrSecret("AMADEUS_API_KEY", "KEY"),
+		AmadeusAPISecret:      getEnvOrSecret("AMADEUS_API_SECRET", "SECRET"),
 		AmadeusBaseURL:        getEnvOrSecret("AMADEUS_BASE_URL", ""),
-		SkyScannerRapidAPIKey: getEnvOrSecret("SKYSCANNER_API_KEY", ""),
+		SkyScannerRapidAPIKey: getEnvOrSecret("SKYSCANNER_API_KEY", "KEY"),
 		SkyScannerBaseURL:     getEnvOrSecret("SKYSCANNER_BASE_URL", ""),
 		ClientTimeout:         clientTimeout,
 	}
@@ -50,17 +50,18 @@ func Load() (*Config, error) {
 }
 
 func getEnvOrSecret(key, defaultValue string) string {
-	// Op 1. The code intent to read docker secret (production)
+	// if it's not a secret info the variable should be in the environment
+	if defaultValue != "KEY" && defaultValue != "SECRET" {
+		if value, exists := os.LookupEnv(key); exists {
+			return value
+		}
+	}
+
+	// code intent to read docker secret
 	if secret, err := readDockerSecret(key); err == nil && secret != "" {
 		return secret
 	}
 
-	// Op 2. Search the variable from env (useful for testing propose)
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-
-	// Op 3. Use default value
 	return defaultValue
 }
 
