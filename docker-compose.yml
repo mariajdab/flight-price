@@ -10,6 +10,7 @@ services:
       - CLIENT_TIMEOUT=10s
       - AMADEUS_BASE_URL=https://test.api.amadeus.com
       - SKYSCANNER_BASE_URL=https://sky-scanner3.p.rapidapi.com
+      - BASE_APP_URL=https://domain
     secrets:
       - amadeus_api_key
       - amadeus_api_secret

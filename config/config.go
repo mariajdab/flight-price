@@ -20,6 +20,9 @@ type Config struct {
 	SkyScannerRapidAPIKey string `validate:"required,min=25"`
 	SkyScannerBaseURL     string `validate:"required,min=15"`
 
+	AppBaseURL string `validate:"required,url"`
+	AppEnv     string `validate:"required,min=5"`
+
 	ClientTimeout time.Duration `validate:"required,len=3"`
 }
 
@@ -36,6 +39,8 @@ func Load() (*Config, error) {
 		AmadeusBaseURL:        getEnvOrSecret("AMADEUS_BASE_URL", ""),
 		SkyScannerRapidAPIKey: getEnvOrSecret("SKYSCANNER_API_KEY", "SECRET"),
 		SkyScannerBaseURL:     getEnvOrSecret("SKYSCANNER_BASE_URL", ""),
+		AppBaseURL:            getEnvOrSecret("APP_BASE_URL", ""),
+		AppEnv:                getEnvOrSecret("APP_ENV", ""),
 		ClientTimeout:         clientTimeout,
 	}
 	if err := validate(c); err != nil {
