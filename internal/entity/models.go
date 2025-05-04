@@ -3,12 +3,12 @@ package entity
 import "time"
 
 type Flight struct {
-	Airline     string
-	Origin      string
-	Destination string
-	Departure   time.Time
-	Arrival     time.Time
-	Price       float64
+	Airline         string
+	OriginCode      string
+	DestinationCode string
+	DepartureTime   time.Time
+	ArrivalTime     time.Time
+	Price           float64
 }
 
 type FlightSearchParam struct {
@@ -33,14 +33,17 @@ type FlightAmadeusResp struct {
 }
 
 type FlightOffer struct {
+	ID          string `json:"id"`
 	Itineraries []struct {
 		Duration string `json:"duration"`
 		Segments []struct {
 			Departure struct {
-				At time.Time `json:"at"`
+				IataCode string    `json:"iataCode"`
+				At       time.Time `json:"at"`
 			} `json:"departure"`
 			Arrival struct {
-				At time.Time `json:"at"`
+				IataCode string    `json:"iataCode"`
+				At       time.Time `json:"at"`
 			} `json:"arrival"`
 			CarrierCode string `json:"carrierCode"`
 		} `json:"segments"`
