@@ -4,15 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/mariajdab/flight-price/internal/entity"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
 const (
+	providerName       = "Amadeus"
 	defaultTravelClass = "Economy"
 	defaultCurrency    = "USD"
 )
@@ -135,4 +139,103 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 	}
 
 	return flights.Data, nil
+}
+
+func offersProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResponse, error) {
+	if len(offers) == 0 {
+		return entity.FlightSearchResponse{}, errors.New("empty offers list")
+	}
+
+	// initialize with the first flight
+	cheapest := offers[0]
+	fastest := offers[0]
+
+	fastestDuration, err := parseDuration(fastest.Itineraries[0].Duration)
+	if err != nil {
+		fmt.Println("Error parsing fastest duration:", err)
+		return entity.FlightSearchResponse{}, err
+	}
+
+	resp := entity.FlightSearchResponse{
+		Flights: make([]entity.Flight, 0, len(offers)),
+	}
+
+	for _, offer := range offers {
+		// check cheapest flight
+		if offer.Price.Total < cheapest.Price.Total {
+			cheapest = offer
+		}
+
+		// check fastest flight
+		duration, err := parseDuration(offer.Itineraries[0].Duration)
+		if err != nil {
+			log.Printf("warning: could not parse duration for offer: %v, error: %v", offer.ID, err)
+			continue
+		}
+		if duration < fastestDuration {
+			fastest = offer
+			fastestDuration = duration
+		}
+
+		// validate and process flight data
+		it := offer.Itineraries
+		if len(offer.Itineraries) <= 0 {
+			log.Println("the flight offer does not have itineraries: ", offer)
+			continue
+		}
+
+		s := it[0].Segments
+		if len(it[0].Segments) <= 0 {
+			log.Println("the flight offer does not have segments: ", offer)
+			continue
+		}
+
+		price, err := strconv.ParseFloat(offer.Price.Total, 64)
+		if err != nil {
+			return entity.FlightSearchResponse{}, err
+		}
+
+		// save flight data in a useful struct
+		resp.Flights = append(resp.Flights, entity.Flight{
+			OriginCode:      s[0].Departure.IataCode,
+			DestinationCode: s[0].Arrival.IataCode,
+			DepartureTime:   s[0].Departure.At,
+			ArrivalTime:     s[0].Arrival.At,
+			Price:           price,
+		})
+	}
+
+	priceCh, err := strconv.ParseFloat(cheapest.Price.Total, 64)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error parsing cheapest price: %w", err)
+	}
+	priceFt, err := strconv.ParseFloat(fastest.Price.Total, 64)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error parsing fastest price: %w", err)
+	}
+
+	resp.Provider = providerName
+	resp.Cheapest = createFlightFromOffer(cheapest, priceCh)
+	resp.Fastest = createFlightFromOffer(fastest, priceFt)
+
+	return resp, nil
+}
+
+func parseDuration(durationStr string) (time.Duration, error) {
+	durationStr = strings.TrimPrefix(durationStr, "PT")
+	durationStr = strings.Replace(durationStr, "H", "h", 1)
+	durationStr = strings.Replace(durationStr, "M", "m", 1)
+	return time.ParseDuration(durationStr)
+}
+
+// createFlightFromOffer is a helper function to create Flight from Offer
+func createFlightFromOffer(offer entity.FlightOffer, price float64) entity.Flight {
+	segments := offer.Itineraries[0].Segments[0]
+	return entity.Flight{
+		OriginCode:      segments.Departure.IataCode,
+		DestinationCode: segments.Arrival.IataCode,
+		DepartureTime:   segments.Departure.At,
+		ArrivalTime:     segments.Arrival.At,
+		Price:           price,
+	}
 }
