@@ -6,5 +6,5 @@ import (
 )
 
 type Flight interface {
-	SearchFlights(ctx context.Context, criteria entity.SearchReq) ([]entity.Flight, error)
+	SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) ([]entity.Flight, error)
 }

@@ -13,7 +13,6 @@ func NewProviderAmadeus(client *Client) *ProviderAmadeus {
 	return &ProviderAmadeus{client: client}
 }
 
-func (a *ProviderAmadeus) SearchFlights(ctx context.Context, criteria entity.SearchReq) ([]entity.Flight, error) {
+func (a *ProviderAmadeus) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) ([]entity.Flight, error) {
 
-	return nil, nil
 }
