@@ -1,12 +1,22 @@
 package api
 
 import (
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"github.com/mariajdab/flight-price/internal/entity"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
+	services "github.com/mariajdab/flight-price/internal/flights/service"
 )
 
 // Flight represents a flight
@@ -14,6 +24,11 @@ type Flight struct {
 	Origin      string `json:"origin"`
 	Destination string `json:"destination"`
 	Date        string `json:"date"`
+}
+
+type Server struct {
+	httpServer *http.Server
+	flightSvc  *services.FlightService
 }
 
 type jwtCustomClaims struct {
@@ -39,7 +54,7 @@ func generateTokenHandler(c echo.Context) error {
 }
 
 // searchFlightsHandler handles the GET /flights/search request
-func searchFlightsHandler(c echo.Context) error {
+func (s *Server) handleFlightSearch(c echo.Context) error {
 	// authenticate the request using JWT
 	user := c.Get("user")
 	token := user.(*jwt.Token)
@@ -53,19 +68,36 @@ func searchFlightsHandler(c echo.Context) error {
 	destination := c.QueryParam("destination")
 	date := c.QueryParam("date")
 
-	// TODO: implement flight search logic
-	// for now, just return a dummy response
-	flights := []Flight{
-		{Origin: origin, Destination: destination, Date: date},
-	}
+	flights := s.flightSvc.SearchFlights(
+		context.Background(),
+		entity.FlightSearchParam{
+			Origin:        origin,
+			Destination:   destination,
+			DateDeparture: date,
+		},
+	)
 
 	return c.JSON(http.StatusOK, flights)
 }
 
-func NewServer() *echo.Echo {
+func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
+	mux := http.NewServeMux()
+	server := &http.Server{
+		Addr:         ":8443",
+		Handler:      mux,
+		TLSConfig:    tls,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	srv := &Server{
+		httpServer: server,
+		flightSvc:  flightSvc,
+	}
+
 	e := echo.New()
 
-	// define the routes and groups
 	public := e.Group("/public/v1")
 	public.GET("/generate-token", generateTokenHandler)
 
@@ -78,7 +110,30 @@ func NewServer() *echo.Echo {
 	}
 
 	private.Use(echojwt.WithConfig(config))
-	private.GET("/flights/search", searchFlightsHandler)
+	private.GET("/flights/search", srv.handleFlightSearch)
 
-	return e
+	return srv
+}
+
+func (s *Server) Start() error {
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		log.Println("Starting server on :8443")
+		if err := s.httpServer.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Error starting HTTPS server: %v", err)
+		}
+	}()
+
+	<-done
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func() { cancel() }()
+
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown failed: %w", err)
+	}
+
+	log.Println("Shutdown server")
+	return nil
 }

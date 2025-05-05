@@ -1,19 +1,15 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
-	"errors"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"github.com/mariajdab/flight-price/api"
 	"github.com/mariajdab/flight-price/config"
+	"github.com/mariajdab/flight-price/internal/entity"
+	services "github.com/mariajdab/flight-price/internal/flights/service"
+	"github.com/mariajdab/flight-price/internal/providers/amadeus"
 	"golang.org/x/crypto/acme/autocert"
+	"log"
+	"net/http"
 )
 
 const PROD = "production"
@@ -24,14 +20,7 @@ func main() {
 		log.Fatal("Failed to load config variables: ", err)
 	}
 
-	server := &http.Server{
-		Addr:         ":" + os.Getenv("SERVER_PORT"),
-		Handler:      http.DefaultServeMux,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
+	tlsConfig := &tls.Config{}
 	if c.AppEnv == PROD && c.AppBaseURL != "" {
 		// for production use let's encrypt
 		certManager := autocert.Manager{
@@ -39,7 +28,7 @@ func main() {
 			Cache:      autocert.DirCache("certs"),
 			HostPolicy: autocert.HostWhitelist(c.AppBaseURL),
 		}
-		server.TLSConfig = &tls.Config{
+		tlsConfig = &tls.Config{
 			GetCertificate: certManager.GetCertificate,
 			MinVersion:     tls.VersionTLS12,
 		}
@@ -48,32 +37,48 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error on cert and key: %v", err)
 		}
-		server.TLSConfig = &tls.Config{
+		tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			MinVersion:   tls.VersionTLS12,
 		}
 	}
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-
-	handler := api.NewServer()
-
-	server.Handler = handler
-
-	go func() {
-		log.Println("Starting server on :8443")
-		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Error starting HTTPS server: %v", err)
-		}
-	}()
-
-	<-done
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer func() { cancel() }()
-
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Error during shutting down the server: %v", err)
+	cfg := entity.ProvConfig{
+		Providers: []entity.Provider{
+			{
+				Name:    entity.AmadeusProvider,
+				BaseURL: c.AmadeusBaseURL,
+				Apikey:  c.AmadeusAPIKey,
+				Secret:  c.AmadeusAPISecret,
+				Timeout: c.ClientTimeout,
+			},
+			{
+				Name:    entity.SKyRapidProvider,
+				BaseURL: c.SkyRapidBaseURL,
+				Apikey:  c.GoogleFlightRapidBaseURL,
+				Timeout: c.ClientTimeout,
+			},
+			{
+				Name:    entity.GoogleFlightRapidProvider,
+				BaseURL: c.GoogleFlightRapidBaseURL,
+				Apikey:  c.GoogleFlightRapidAPIKey,
+				Timeout: c.ClientTimeout,
+			},
+		},
 	}
-	log.Println("Shutdown server")
+
+	httpClient := http.Client{}
+
+	amadeusClient := amadeus.NewClient(httpClient, cfg.Providers[0])
+	amadeusAdapter := amadeus.NewAdapterAmadeus(amadeusClient)
+
+	flightService := services.NewFlightService(
+		amadeusAdapter,
+	)
+
+	server := api.New(flightService, tlsConfig)
+
+	if err := server.Start(); err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
 }
