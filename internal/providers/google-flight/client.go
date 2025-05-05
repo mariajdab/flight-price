@@ -1,4 +1,4 @@
-package sky
+package google_flight
 
 import (
 	"context"
@@ -32,7 +32,21 @@ func NewClient(httpClient http.Client, baseURL, apiKey string, timeout time.Dura
 	}
 }
 
-func (c *Client) getFlightOffers(ctx context.Context, params entity.FlightSearchParam) ([]entity.TopFlights, error) {
+func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
+	flights, err := c.getTopFlights(ctx, params)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error in getTopFlights: %w", err)
+	}
+
+	resp, err := flightsPreProcess(flights)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error in offersProcessResponse: %w", err)
+	}
+
+	return resp, nil
+}
+
+func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchParam) ([]entity.TopFlights, error) {
 	const flightSearchEndpoint = "/flights/search-one-way"
 
 	baseURL, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, flightSearchEndpoint))
@@ -83,7 +97,7 @@ func (c *Client) getFlightOffers(ctx context.Context, params entity.FlightSearch
 	return flights.Data, nil
 }
 
-func flightsPreProcessResponse(flights []entity.TopFlights) (entity.FlightSearchResponse, error) {
+func flightsPreProcess(flights []entity.TopFlights) (entity.FlightSearchResponse, error) {
 	if len(flights) == 0 {
 		return entity.FlightSearchResponse{}, errors.New("empty flights list from google-flights")
 	}
