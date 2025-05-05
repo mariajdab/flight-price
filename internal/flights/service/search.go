@@ -16,6 +16,6 @@ func NewFlightService(providers ...providers.Flight) *FlightService {
 	}
 }
 
-func (s *FlightService) SearchFlights(ctx context.Context, criteria entity.SearchReq) []entity.FlightSearchResponse {
+func (s *FlightService) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) []entity.FlightSearchResponse {
 	return nil
 }
