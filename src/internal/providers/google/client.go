@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mariajdab/flight-price/internal/entity"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -46,24 +47,22 @@ func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam
 	return resp, nil
 }
 
-func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchParam) ([]entity.TopFlights, error) {
-	const flightSearchEndpoint = "/flights/search-one-way"
+func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchParam) ([]entity.OtherFlight, error) {
+	const (
+		flightSearchEndpoint = "flights/search-one-way"
+		host                 = "google-flights4.p.rapidapi.com"
+	)
 
 	baseURL, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, flightSearchEndpoint))
 	if err != nil {
 		return nil, err
 	}
 
-	//date := params.DateDeparture.Format(time.DateOnly)
-
 	// building the query parameters
 	query := url.Values{}
 	query.Set("departureId", params.Origin)
 	query.Set("arrivalId", params.Destination)
 	query.Set("departureDate", params.DateDeparture)
-	query.Set("adults", entity.DefaultAdults)
-	query.Set("cabinClass", entity.DefaultTravelClass)
-	query.Set("currency", entity.DefaultCurrency)
 
 	baseURL.RawQuery = query.Encode()
 	flightOffersURL := baseURL.String()
@@ -73,7 +72,7 @@ func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchPa
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-rapidapi-host", "google-flights4.p.rapidapi.com")
+	req.Header.Set("x-rapidapi-host", host)
 	req.Header.Set("x-rapidapi-key", c.apikey)
 
 	client := &http.Client{}
@@ -84,7 +83,8 @@ func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchPa
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get flight offers from amadeus: %s", resp.Body)
+		errorBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get flights (status %d): %s", resp.StatusCode, string(errorBody))
 	}
 
 	var flights entity.FlightGoogleResp
@@ -94,10 +94,10 @@ func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchPa
 		return nil, err
 	}
 
-	return flights.Data, nil
+	return flights.Data.OtherFlights, nil
 }
 
-func flightsPreProcess(flights []entity.TopFlights) (entity.FlightSearchResponse, error) {
+func flightsPreProcess(flights []entity.OtherFlight) (entity.FlightSearchResponse, error) {
 	if len(flights) == 0 {
 		return entity.FlightSearchResponse{}, errors.New("empty flights list from google-flights")
 	}
@@ -134,8 +134,8 @@ func flightsPreProcess(flights []entity.TopFlights) (entity.FlightSearchResponse
 
 	resp.Provider = providerName
 	resp.Currency = entity.DefaultCurrency
-	resp.Cheapest = createFlightFromTopOffers(cheapest)
-	resp.Fastest = createFlightFromTopOffers(fastest)
+	resp.Cheapest = createFlightFromOtherFlight(cheapest)
+	resp.Fastest = createFlightFromOtherFlight(fastest)
 
 	return resp, nil
 }
@@ -145,14 +145,14 @@ func createSegments(segmentsData []entity.SegmentGoogleF) []entity.Segment {
 	for _, s := range segmentsData {
 		departureTime, err := formatDate(s.DepartureTime, s.DepartureDate)
 		if err != nil {
-			// log here
-			departureTime = "2006-01-02 15:04:05"
+			log.Println("error in formatting departure time", err, departureTime)
+			departureTime = s.DepartureDate // not info abut time only date
 		}
 
 		arrivalTime, err := formatDate(s.ArrivalTime, s.ArrivalDate)
 		if err != nil {
-			// log here
-			arrivalTime = "2006-01-02 15:04:05"
+			log.Println("error in formatting arrival time", err, departureTime)
+			arrivalTime = s.ArrivalTime // not info abut time only date
 		}
 
 		segments = append(segments, entity.Segment{
@@ -165,7 +165,7 @@ func createSegments(segmentsData []entity.SegmentGoogleF) []entity.Segment {
 	return segments
 }
 
-func createFlightFromTopOffers(tf entity.TopFlights) entity.Flight {
+func createFlightFromOtherFlight(tf entity.OtherFlight) entity.Flight {
 	segments := createSegments(tf.Segments)
 
 	return entity.Flight{
@@ -181,7 +181,6 @@ func formatDate(timeStr, dateStr string) (string, error) {
 
 	parsedTime, err := time.Parse(layout, dateTimeStr)
 	if err != nil {
-		fmt.Println("Error parsing time:", err)
 		return "", err
 	}
 
