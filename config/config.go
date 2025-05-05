@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -23,24 +22,27 @@ type Config struct {
 	AppBaseURL string `validate:"required,url"`
 	AppEnv     string `validate:"required,min=5"`
 
-	ClientTimeout time.Duration `validate:"required,len=3"`
+	ClientTimeout time.Duration `validate:"required"`
 }
 
 func Load() (*Config, error) {
-	env := getEnvOrSecret("APP_ENV", "")
+	env := getEnvOrFail("APP_ENV")
 	log.Println("the current environment is: ", env)
 
-	clientTimeout, _ := time.ParseDuration(getEnvOrSecret("CLIENT_TIMEOUT", "10s"))
+	clientTimeout, err := time.ParseDuration(getEnvOrFail("CLIENT_TIMEOUT"))
+	if err != nil {
+		return nil, err
+	}
 
 	c := Config{
-		ServerPort:            getEnvOrSecret("SERVER_PORT", ""),
-		AmadeusAPIKey:         getEnvOrSecret("AMADEUS_API_KEY", "SECRET"),
-		AmadeusAPISecret:      getEnvOrSecret("AMADEUS_API_SECRET", "SECRET"),
-		AmadeusBaseURL:        getEnvOrSecret("AMADEUS_BASE_URL", ""),
-		SkyScannerRapidAPIKey: getEnvOrSecret("SKYSCANNER_API_KEY", "SECRET"),
-		SkyScannerBaseURL:     getEnvOrSecret("SKYSCANNER_BASE_URL", ""),
-		AppBaseURL:            getEnvOrSecret("APP_BASE_URL", ""),
-		AppEnv:                getEnvOrSecret("APP_ENV", ""),
+		ServerPort:            getEnvOrFail("SERVER_PORT"),
+		AmadeusAPIKey:         getEnvOrFail("AMADEUS_API_KEY"),
+		AmadeusAPISecret:      getEnvOrFail("AMADEUS_API_SECRET"),
+		AmadeusBaseURL:        getEnvOrFail("AMADEUS_BASE_URL"),
+		SkyScannerRapidAPIKey: getEnvOrFail("SKYSCANNER_API_KEY"),
+		SkyScannerBaseURL:     getEnvOrFail("SKYSCANNER_BASE_URL"),
+		AppBaseURL:            getEnvOrFail("APP_BASE_URL"),
+		AppEnv:                getEnvOrFail("APP_ENV"),
 		ClientTimeout:         clientTimeout,
 	}
 	if err := validate(c); err != nil {
@@ -49,34 +51,12 @@ func Load() (*Config, error) {
 	return &c, nil
 }
 
-func getEnvOrSecret(key, defaultValue string) string {
-	// if it's not a secret info the variable should be in the environment
-	if defaultValue != "SECRET" {
-		if value, exists := os.LookupEnv(key); exists {
-			return value
-		}
+func getEnvOrFail(key string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	} else {
+		panic(fmt.Errorf("could not find env: %s", key))
 	}
-
-	// intent to read docker secret
-	if secret, err := readDockerSecret(key); err == nil && secret != "" {
-		return secret
-	}
-
-	return defaultValue
-}
-
-func readDockerSecret(secretName string) (string, error) {
-	secretPath := fmt.Sprintf("/run/secrets/%s", secretName)
-
-	data, err := os.ReadFile(secretPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil // does not exist then not return error, the specific error check occurs in validate
-		}
-		return "", fmt.Errorf("error reading secret %s: %v", secretName, err)
-	}
-
-	return strings.TrimSpace(string(data)), nil
 }
 
 func validate(config Config) error {
