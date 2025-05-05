@@ -1,4 +1,4 @@
-package sky_rapid
+package sky
 
 import (
 	"context"
@@ -13,7 +13,7 @@ func NewProviderAmadeus(client *Client) *ProviderSkyRapid {
 	return &ProviderSkyRapid{client: client}
 }
 
-func (a *ProviderSkyRapid) SearchFlights(ctx context.Context, criteria entity.SearchReq) ([]entity.Flight, error) {
+func (a *ProviderSkyRapid) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) ([]entity.Flight, error) {
 
 	return nil, nil
 }
