@@ -32,7 +32,21 @@ func NewClient(httpClient http.Client, baseURL, apiKey string, timeout time.Dura
 	}
 }
 
-func (c *Client) getFlightOffers(ctx context.Context, params entity.FlightSearchParam) ([]entity.FlightItinerary, error) {
+func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
+	itineraries, err := c.getFlightItineraries(ctx, params)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error in sky-flght when trying to getFlightItineraries: %w", err)
+	}
+
+	resp, err := itineraryPreProcessResponse(itineraries)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error in itineraryPreProcessResponse: %w", err)
+	}
+
+	return resp, nil
+}
+
+func (c *Client) getFlightItineraries(ctx context.Context, params entity.FlightSearchParam) ([]entity.FlightItinerary, error) {
 	const flightSearchEndpoint = "flights/search-one-way"
 
 	baseURL, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, flightSearchEndpoint))
