@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-
 	"github.com/mariajdab/flight-price/internal/entity"
 	"github.com/mariajdab/flight-price/internal/providers"
 )

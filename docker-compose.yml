@@ -17,17 +17,17 @@ services:
     secrets:
       - amadeus_api_key
       - amadeus_api_secret
-      - skyscanner_api_key
-      - google_flights_api_key
+      - sky_rapid_api_key
+      - google_flight_rapid_api_key
     ports:
       - "8443:8443"
 
 secrets:
   amadeus_api_key:
-    file: ./secrets/amadeus_api_key.txt
+    file: secrets/amadeus_api_key.txt
   amadeus_api_secret:
-    file: ./secrets/amadeus_api_secret.txt
+    file: secrets/amadeus_api_secret.txt
   sky_rapid_api_key:
-    file: ./secrets/sky_rapid_api_key.txt
+    file: secrets/sky_rapid_api_key.txt
   google_flight_rapid_api_key:
-    file: ./secrets/google_flight_rapid_api_key.txt
+    file: secrets/google_flight_rapid_api_key.txt

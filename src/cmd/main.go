@@ -6,7 +6,7 @@ import (
 	"github.com/mariajdab/flight-price/config"
 	"github.com/mariajdab/flight-price/internal/entity"
 	services "github.com/mariajdab/flight-price/internal/flights/service"
-	"github.com/mariajdab/flight-price/internal/providers/amadeus"
+	amadeus2 "github.com/mariajdab/flight-price/internal/providers/amadeus"
 	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
@@ -20,7 +20,7 @@ func main() {
 		log.Fatal("Failed to load config variables: ", err)
 	}
 
-	tlsConfig := &tls.Config{}
+	tlsConfig := tls.Config{}
 	if c.AppEnv == PROD && c.AppBaseURL != "" {
 		// for production use let's encrypt
 		certManager := autocert.Manager{
@@ -28,7 +28,7 @@ func main() {
 			Cache:      autocert.DirCache("certs"),
 			HostPolicy: autocert.HostWhitelist(c.AppBaseURL),
 		}
-		tlsConfig = &tls.Config{
+		tlsConfig = tls.Config{
 			GetCertificate: certManager.GetCertificate,
 			MinVersion:     tls.VersionTLS12,
 		}
@@ -37,7 +37,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error on cert and key: %v", err)
 		}
-		tlsConfig = &tls.Config{
+		tlsConfig = tls.Config{
 			Certificates: []tls.Certificate{cert},
 			MinVersion:   tls.VersionTLS12,
 		}
@@ -69,14 +69,14 @@ func main() {
 
 	httpClient := http.Client{}
 
-	amadeusClient := amadeus.NewClient(httpClient, cfg.Providers[0])
-	amadeusAdapter := amadeus.NewAdapterAmadeus(amadeusClient)
+	amadeusClient := amadeus2.NewClient(httpClient, cfg.Providers[0])
+	amadeusAdapter := amadeus2.NewAdapterAmadeus(amadeusClient)
 
 	flightService := services.NewFlightService(
 		amadeusAdapter,
 	)
 
-	server := api.New(flightService, tlsConfig)
+	server := api.New(flightService, &tlsConfig)
 
 	if err := server.Start(); err != nil {
 		log.Fatalf("Server error: %v", err)
