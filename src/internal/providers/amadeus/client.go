@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mariajdab/flight-price/internal/entity"
+	"io"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -42,6 +44,8 @@ func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam
 		return entity.FlightSearchResponse{}, err
 	}
 
+	fmt.Println("AQUI")
+
 	offers, err := c.getFlightOffers(ctx, token, params)
 	if err != nil {
 		return entity.FlightSearchResponse{}, fmt.Errorf("error in getFlightOffers: %w", err)
@@ -58,37 +62,35 @@ func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam
 func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	const tokenEndpoint = "v1/security/oauth2/token"
 
-	bodyData := map[string]string{
-		"grant_type":    "client_credentials",
-		"client_id":     c.apikey,
-		"client_secret": c.secret,
-	}
-
 	tokenURL, err := url.Parse(fmt.Sprintf("%s/%s", c.baseURL, tokenEndpoint))
 	if err != nil {
 		return "", err
 	}
 
-	jsonBody, err := json.Marshal(bodyData)
-	if err != nil {
-		return "", fmt.Errorf("error marshaling JSON: %v", err)
-	}
+	data := url.Values{}
+	data.Set("grant_type", "client_credentials")
+	data.Add("client_id", c.apikey)
+	data.Add("client_secret", c.secret)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL.String(), bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("POST", tokenURL.String(), bytes.NewBufferString(data.Encode()))
 	if err != nil {
+		log.Println(fmt.Errorf("error creando request: %v", err))
 		return "", err
 	}
-	req.Header.Add("Content-Type", "application/json")
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Println(fmt.Errorf("error creando request: %v", err))
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get access token: %s", resp.Body)
+		errorBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("failed to get token (status %d): %s", resp.StatusCode, string(errorBody))
 	}
 
 	var auth struct {
@@ -117,7 +119,7 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 	query.Set("destinationLocationCode", params.Destination)
 	query.Set("departureDate", params.DateDeparture)
 	query.Set("adults", entity.DefaultAdults)
-	query.Set("cabinClass", entity.DefaultTravelClass)
+	query.Set("travelClass", entity.DefaultTravelClass)
 	query.Set("currencyCode", entity.DefaultCurrency)
 
 	baseURL.RawQuery = query.Encode()
@@ -125,6 +127,7 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, flightOffersURL, nil)
 	if err != nil {
+		log.Println(fmt.Errorf("error creando request: %v", err))
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -138,7 +141,8 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get flight offers from amadeus: %s", resp.Body)
+		errorBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get flight offers (status %d): %s", resp.StatusCode, string(errorBody))
 	}
 
 	var flights entity.FlightAmadeusResp
@@ -160,8 +164,8 @@ func offersPreProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchR
 	// initialize with the first flight
 	cheapest := offers[0]
 	fastest := offers[0]
+	lastPriceCheapest := math.MaxFloat32
 
-	// TODO: improve this
 	fastestDuration, err := parseDuration(fastest.Itineraries[0].Duration)
 	if err != nil {
 		fmt.Println("Error parsing fastest duration:", err)
@@ -173,9 +177,15 @@ func offersPreProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchR
 	}
 
 	for _, offer := range offers {
+		price, err := strconv.ParseFloat(offer.Price.Total, 64)
+		if err != nil {
+			return entity.FlightSearchResponse{}, err
+		}
+
 		// check cheapest flight
-		if offer.Price.Total < cheapest.Price.Total {
+		if price < lastPriceCheapest {
 			cheapest = offer
+			lastPriceCheapest = price
 		}
 
 		if len(offer.Itineraries) == 0 {
@@ -203,11 +213,6 @@ func offersPreProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchR
 					ArrivalTime:        s.Arrival.At,
 				})
 			}
-		}
-
-		price, err := strconv.ParseFloat(offer.Price.Total, 64)
-		if err != nil {
-			return entity.FlightSearchResponse{}, err
 		}
 
 		// save flight data in a useful struct
