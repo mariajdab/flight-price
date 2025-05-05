@@ -3,7 +3,7 @@ package entity
 import "time"
 
 const (
-	DefaultTravelClass = "Economy"
+	DefaultTravelClass = "ECONOMY"
 	DefaultCurrency    = "USD"
 	DefaultAdults      = "1"
 )
@@ -34,14 +34,14 @@ type FlightSearchParam struct {
 }
 
 type FlightSearchResponse struct {
-	OriginName      string
-	DestinationName string
-	Provider        string
-	Currency        string
-	Cheapest        Flight
-	Fastest         Flight
-	Flights         []Flight
-	Error           error
+	OriginName      string   `json:"originName"`
+	DestinationName string   `json:"destinationName"`
+	Provider        string   `json:"provider"`
+	Currency        string   `json:"currency"`
+	Cheapest        Flight   `json:"cheapest"`
+	Fastest         Flight   `json:"fastest"`
+	Flights         []Flight `json:"flights"`
+	Error           error    `json:"error"`
 }
 
 type FlightAmadeusResp struct {
@@ -53,7 +53,7 @@ type FlightSkyResp struct {
 }
 
 type FlightGoogleResp struct {
-	Data []TopFlights `json:"data"`
+	Data Data `json:"data"`
 }
 
 // FlightOffer represent amadeus response of a flight search
@@ -80,8 +80,8 @@ type FlightItinerary struct {
 	} `json:"legs"`
 }
 
-// TopFlights represent flights google response of a flight search
-type TopFlights struct {
+// OtherFlight represent flights google response of a flight search
+type OtherFlight struct {
 	Price    float64          `json:"price"`
 	Duration int              `json:"duration"`
 	Segments []SegmentGoogleF `json:"segments"`
@@ -135,4 +135,8 @@ type Provider struct {
 
 type ProvConfig struct {
 	Providers []Provider
+}
+
+type Data struct {
+	OtherFlights []OtherFlight `json:"otherFlights"`
 }
