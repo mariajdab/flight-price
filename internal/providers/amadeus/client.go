@@ -10,16 +10,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const (
-	providerName       = "Amadeus"
-	defaultTravelClass = "Economy"
-	defaultCurrency    = "USD"
-)
+const providerName = "Amadeus"
 
 type Client struct {
 	httpClient http.Client
@@ -39,11 +36,26 @@ func NewClient(httpClient http.Client, baseURL, apiKey, secret string, timeout t
 	}
 }
 
-func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam) error {
+func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
+	token, err := c.getAccessToken(ctx)
+	if err != nil {
+		return entity.FlightSearchResponse{}, err
+	}
 
+	offers, err := c.getFlightOffers(ctx, token, params)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error in getFlightOffers: %w", err)
+	}
+
+	resp, err := offersPreProcessResponse(offers)
+	if err != nil {
+		return entity.FlightSearchResponse{}, fmt.Errorf("error in offersProcessResponse: %w", err)
+	}
+
+	return resp, nil
 }
 
-func (c *Client) getAccessToken() (string, error) {
+func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	const tokenEndpoint = "v1/security/oauth2/token"
 
 	bodyData := map[string]string{
@@ -62,7 +74,7 @@ func (c *Client) getAccessToken() (string, error) {
 		return "", fmt.Errorf("error marshaling JSON: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, tokenURL.String(), bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL.String(), bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", err
 	}
@@ -106,9 +118,9 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 	query.Set("originLocationCode", params.Origin)
 	query.Set("destinationLocationCode", params.Destination)
 	query.Set("departureDate", date)
-	query.Set("adults", fmt.Sprintf("%v", params.Adults))
-	query.Set("travelClass", defaultTravelClass)
-	query.Set("currencyCode", defaultCurrency)
+	query.Set("adults", entity.DefaultAdults)
+	query.Set("cabinClass", entity.DefaultTravelClass)
+	query.Set("currencyCode", entity.DefaultCurrency)
 
 	baseURL.RawQuery = query.Encode()
 	flightOffersURL := baseURL.String()
@@ -141,7 +153,8 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 	return flights.Data, nil
 }
 
-func offersProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResponse, error) {
+// offersPreProcessResponse aim to preprocess the data and obtain the cheapest and fast flight for the provider
+func offersPreProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResponse, error) {
 	if len(offers) == 0 {
 		return entity.FlightSearchResponse{}, errors.New("empty offers list")
 	}
@@ -150,6 +163,7 @@ func offersProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResp
 	cheapest := offers[0]
 	fastest := offers[0]
 
+	// TODO: improve this
 	fastestDuration, err := parseDuration(fastest.Itineraries[0].Duration)
 	if err != nil {
 		fmt.Println("Error parsing fastest duration:", err)
@@ -166,28 +180,31 @@ func offersProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResp
 			cheapest = offer
 		}
 
-		// check fastest flight
-		duration, err := parseDuration(offer.Itineraries[0].Duration)
-		if err != nil {
-			log.Printf("warning: could not parse duration for offer: %v, error: %v", offer.ID, err)
-			continue
-		}
-		if duration < fastestDuration {
-			fastest = offer
-			fastestDuration = duration
-		}
-
-		// validate and process flight data
-		it := offer.Itineraries
-		if len(offer.Itineraries) <= 0 {
+		if len(offer.Itineraries) == 0 {
 			log.Println("the flight offer does not have itineraries: ", offer)
 			continue
 		}
 
-		s := it[0].Segments
-		if len(it[0].Segments) <= 0 {
-			log.Println("the flight offer does not have segments: ", offer)
-			continue
+		segments := make([]entity.Segment, 0)
+		// iterate over itineraries just in case it has more than one item
+		for _, it := range offer.Itineraries {
+			duration, err := parseDuration(it.Duration)
+			if err != nil {
+				log.Printf("warning: could not parse duration for offer: %v, error: %v", offer.ID, err)
+				continue
+			}
+			if duration < fastestDuration {
+				fastest = offer
+				fastestDuration = duration
+			}
+			for _, s := range it.Segments {
+				segments = append(segments, entity.Segment{
+					DepartureAirport:   s.Departure.IataCode,
+					DepartureTime:      s.Departure.At,
+					DestinationAirport: s.Arrival.IataCode,
+					ArrivalTime:        s.Arrival.At,
+				})
+			}
 		}
 
 		price, err := strconv.ParseFloat(offer.Price.Total, 64)
@@ -197,11 +214,9 @@ func offersProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResp
 
 		// save flight data in a useful struct
 		resp.Flights = append(resp.Flights, entity.Flight{
-			OriginCode:      s[0].Departure.IataCode,
-			DestinationCode: s[0].Arrival.IataCode,
-			DepartureTime:   s[0].Departure.At,
-			ArrivalTime:     s[0].Arrival.At,
 			Price:           price,
+			DurationMinutes: durationToMinutes(offer.Itineraries[0].Duration), // convert to other format
+			Segments:        segments,
 		})
 	}
 
@@ -215,6 +230,7 @@ func offersProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchResp
 	}
 
 	resp.Provider = providerName
+	resp.Currency = entity.DefaultCurrency
 	resp.Cheapest = createFlightFromOffer(cheapest, priceCh)
 	resp.Fastest = createFlightFromOffer(fastest, priceFt)
 
@@ -230,12 +246,53 @@ func parseDuration(durationStr string) (time.Duration, error) {
 
 // createFlightFromOffer is a helper function to create Flight from Offer
 func createFlightFromOffer(offer entity.FlightOffer, price float64) entity.Flight {
-	segments := offer.Itineraries[0].Segments[0]
-	return entity.Flight{
-		OriginCode:      segments.Departure.IataCode,
-		DestinationCode: segments.Arrival.IataCode,
-		DepartureTime:   segments.Departure.At,
-		ArrivalTime:     segments.Arrival.At,
-		Price:           price,
+	segments := make([]entity.Segment, 0, len(offer.Itineraries[0].Segments))
+
+	for _, s := range offer.Itineraries[0].Segments {
+
+		segments = append(segments, entity.Segment{
+			DepartureAirport:   s.Departure.IataCode,
+			DepartureTime:      s.Departure.At,
+			DestinationAirport: s.Arrival.IataCode,
+			ArrivalTime:        s.Arrival.At,
+		})
 	}
+
+	return entity.Flight{
+		Price:           price,
+		DurationMinutes: durationToMinutes(offer.Itineraries[0].Duration),
+		Segments:        segments,
+	}
+}
+
+func durationToMinutes(duration string) int {
+	re := regexp.MustCompile(`^PT(?:(\d+)H)?(?:(\d+)M)?$`)
+	matches := re.FindStringSubmatch(duration)
+
+	if len(matches) == 0 {
+		log.Printf("warning: could not parse duration: %v", duration)
+		return 0
+	}
+
+	var hours int
+	if matches[1] != "" {
+		h, err := strconv.Atoi(matches[1])
+		if err != nil {
+			log.Printf("warning: could not parse duration: %v", duration)
+			return 0
+		}
+		hours = h
+	}
+
+	var minutes int
+	if matches[2] != "" {
+		m, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return 0
+		}
+		minutes = m
+	}
+
+	totalMinutes := (hours * 60) + minutes
+	return totalMinutes
 }
