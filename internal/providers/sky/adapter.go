@@ -9,11 +9,15 @@ type ProviderSkyRapid struct {
 	client *Client
 }
 
-func NewProviderAmadeus(client *Client) *ProviderSkyRapid {
+func NewProviderSkyRapid(client *Client) *ProviderSkyRapid {
 	return &ProviderSkyRapid{client: client}
 }
 
-func (a *ProviderSkyRapid) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) ([]entity.Flight, error) {
+func (p *ProviderSkyRapid) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
+	flights, err := p.client.GetFlights(ctx, criteria)
 
-	return nil, nil
+	if err != nil {
+		return entity.FlightSearchResponse{}, err
+	}
+	return flights, nil
 }
