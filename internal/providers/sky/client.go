@@ -23,12 +23,12 @@ type Client struct {
 	timeout    time.Duration
 }
 
-func NewClient(httpClient http.Client, baseURL, apiKey string, timeout time.Duration) *Client {
+func NewClient(httpClient http.Client, configProvider entity.Provider) *Client {
 	return &Client{
 		httpClient: httpClient,
-		baseURL:    baseURL,
-		apikey:     apiKey,
-		timeout:    timeout,
+		baseURL:    configProvider.BaseURL,
+		apikey:     configProvider.Apikey,
+		timeout:    configProvider.Timeout,
 	}
 }
 
@@ -54,13 +54,13 @@ func (c *Client) getFlightItineraries(ctx context.Context, params entity.FlightS
 		return nil, err
 	}
 
-	date := params.DateDeparture.Format(time.DateOnly)
+	//date := params.DateDeparture.Format(time.DateOnly)
 
 	// building the query parameters
 	query := url.Values{}
 	query.Set("fromEntityId", params.Origin)
 	query.Set("toEntityId", params.Destination)
-	query.Set("departDate", date)
+	query.Set("departDate", params.DateDeparture)
 	query.Set("adults", entity.DefaultAdults)
 	query.Set("cabinClass", entity.DefaultTravelClass)
 	query.Set("currency", entity.DefaultCurrency)

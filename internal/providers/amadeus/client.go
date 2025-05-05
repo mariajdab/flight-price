@@ -26,13 +26,13 @@ type Client struct {
 	timeout    time.Duration
 }
 
-func NewClient(httpClient http.Client, baseURL, apiKey, secret string, timeout time.Duration) *Client {
+func NewClient(httpClient http.Client, configProvider entity.Provider) *Client {
 	return &Client{
 		httpClient: httpClient,
-		baseURL:    baseURL,
-		apikey:     apiKey,
-		secret:     secret,
-		timeout:    timeout,
+		baseURL:    configProvider.BaseURL,
+		apikey:     configProvider.Apikey,
+		secret:     configProvider.Secret,
+		timeout:    configProvider.Timeout,
 	}
 }
 
@@ -111,13 +111,11 @@ func (c *Client) getFlightOffers(ctx context.Context, token string, params entit
 		return nil, err
 	}
 
-	date := params.DateDeparture.Format(time.DateOnly)
-
 	// building the query parameters
 	query := url.Values{}
 	query.Set("originLocationCode", params.Origin)
 	query.Set("destinationLocationCode", params.Destination)
-	query.Set("departureDate", date)
+	query.Set("departureDate", params.DateDeparture)
 	query.Set("adults", entity.DefaultAdults)
 	query.Set("cabinClass", entity.DefaultTravelClass)
 	query.Set("currencyCode", entity.DefaultCurrency)
@@ -215,7 +213,7 @@ func offersPreProcessResponse(offers []entity.FlightOffer) (entity.FlightSearchR
 		// save flight data in a useful struct
 		resp.Flights = append(resp.Flights, entity.Flight{
 			Price:           price,
-			DurationMinutes: durationToMinutes(offer.Itineraries[0].Duration), // convert to other format
+			DurationMinutes: durationToMinutes(offer.Itineraries[0].Duration),
 			Segments:        segments,
 		})
 	}

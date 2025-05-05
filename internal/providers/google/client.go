@@ -1,4 +1,4 @@
-package google_flight
+package google
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 // this client use RAPID API
-const providerName = "google-flight"
+const providerName = "google"
 
 type Client struct {
 	httpClient http.Client
@@ -23,12 +23,12 @@ type Client struct {
 	timeout    time.Duration
 }
 
-func NewClient(httpClient http.Client, baseURL, apiKey string, timeout time.Duration) *Client {
+func NewClient(httpClient http.Client, configProvider entity.Provider) *Client {
 	return &Client{
 		httpClient: httpClient,
-		baseURL:    baseURL,
-		apikey:     apiKey,
-		timeout:    timeout,
+		baseURL:    configProvider.BaseURL,
+		apikey:     configProvider.Apikey,
+		timeout:    configProvider.Timeout,
 	}
 }
 
@@ -54,13 +54,13 @@ func (c *Client) getTopFlights(ctx context.Context, params entity.FlightSearchPa
 		return nil, err
 	}
 
-	date := params.DateDeparture.Format(time.DateOnly)
+	//date := params.DateDeparture.Format(time.DateOnly)
 
 	// building the query parameters
 	query := url.Values{}
 	query.Set("departureId", params.Origin)
 	query.Set("arrivalId", params.Destination)
-	query.Set("departureDate", date)
+	query.Set("departureDate", params.DateDeparture)
 	query.Set("adults", entity.DefaultAdults)
 	query.Set("cabinClass", entity.DefaultTravelClass)
 	query.Set("currency", entity.DefaultCurrency)
