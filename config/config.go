@@ -16,8 +16,11 @@ type Config struct {
 	AmadeusAPISecret string `validate:"required,min=10"`
 	AmadeusBaseURL   string `validate:"required,min=15"`
 
-	SkyScannerRapidAPIKey string `validate:"required,min=25"`
-	SkyScannerBaseURL     string `validate:"required,min=15"`
+	SkyRapidAPIKey  string `validate:"required,min=25"`
+	SkyRapidBaseURL string `validate:"required,min=15"`
+
+	GoogleFlightRapidAPIKey  string `validate:"required,min=25"`
+	GoogleFlightRapidBaseURL string `validate:"required,min=15"`
 
 	AppBaseURL string `validate:"required,url"`
 	AppEnv     string `validate:"required,min=5"`
@@ -35,15 +38,17 @@ func Load() (*Config, error) {
 	}
 
 	c := Config{
-		ServerPort:            getEnvOrFail("SERVER_PORT"),
-		AmadeusAPIKey:         getEnvOrFail("AMADEUS_API_KEY"),
-		AmadeusAPISecret:      getEnvOrFail("AMADEUS_API_SECRET"),
-		AmadeusBaseURL:        getEnvOrFail("AMADEUS_BASE_URL"),
-		SkyScannerRapidAPIKey: getEnvOrFail("SKYSCANNER_API_KEY"),
-		SkyScannerBaseURL:     getEnvOrFail("SKYSCANNER_BASE_URL"),
-		AppBaseURL:            getEnvOrFail("APP_BASE_URL"),
-		AppEnv:                getEnvOrFail("APP_ENV"),
-		ClientTimeout:         clientTimeout,
+		ServerPort:               getEnvOrFail("SERVER_PORT"),
+		AmadeusAPIKey:            getEnvOrFail("AMADEUS_API_KEY"),
+		AmadeusAPISecret:         getEnvOrFail("AMADEUS_API_SECRET"),
+		AmadeusBaseURL:           getEnvOrFail("AMADEUS_BASE_URL"),
+		SkyRapidAPIKey:           getEnvOrFail("SKY_RAPID_API_KEY"),
+		SkyRapidBaseURL:          getEnvOrFail("SKY_RAPID_BASE_URL"),
+		GoogleFlightRapidAPIKey:  getEnvOrFail("GOOGLE_FLIGHT_RAPID_API_KEY"),
+		GoogleFlightRapidBaseURL: getEnvOrFail("GOOGLE_FLIGHT_RAPID_BASE_URL"),
+		AppBaseURL:               getEnvOrFail("APP_BASE_URL"),
+		AppEnv:                   getEnvOrFail("APP_ENV"),
+		ClientTimeout:            clientTimeout,
 	}
 	if err := validate(c); err != nil {
 		return nil, err
