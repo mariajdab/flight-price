@@ -8,6 +8,12 @@ const (
 	DefaultAdults      = "1"
 )
 
+const (
+	AmadeusProvider           = "Amadeus"
+	SKyRapidProvider          = "Sky Rapid"
+	GoogleFlightRapidProvider = "Google Flight Rapid"
+)
+
 type Flight struct {
 	Price           float64
 	DurationMinutes int       `json:"total_duration_minutes"`
@@ -17,14 +23,14 @@ type Flight struct {
 type Segment struct {
 	DepartureAirport   string `json:"departureAirport"`
 	DestinationAirport string `json:"destinationAirport"`
-	DepartureTime      string
-	ArrivalTime        string
+	DepartureTime      string `json:"departureTime"`
+	ArrivalTime        string `json:"arrivalTime"`
 }
 
 type FlightSearchParam struct {
 	Origin        string
 	Destination   string
-	DateDeparture time.Time
+	DateDeparture string
 }
 
 type FlightSearchResponse struct {
@@ -47,7 +53,7 @@ type FlightSkyResp struct {
 }
 
 type FlightGoogleResp struct {
-	Data []TopFlights
+	Data []TopFlights `json:"data"`
 }
 
 // FlightOffer represent amadeus response of a flight search
@@ -74,7 +80,7 @@ type FlightItinerary struct {
 	} `json:"legs"`
 }
 
-// TopFlights represent flights google-flight response of a flight search
+// TopFlights represent flights google response of a flight search
 type TopFlights struct {
 	Price    float64          `json:"price"`
 	Duration int              `json:"duration"`
@@ -117,4 +123,16 @@ type SegmentSky struct {
 	} `json:"destination"`
 	DepartureDate string `json:"departure"`
 	ArrivalDate   string `json:"arrival"`
+}
+
+type Provider struct {
+	Name    string
+	BaseURL string
+	Apikey  string
+	Secret  string
+	Timeout time.Duration
+}
+
+type ProvConfig struct {
+	Providers []Provider
 }
