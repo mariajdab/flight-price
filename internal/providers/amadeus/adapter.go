@@ -5,15 +5,15 @@ import (
 	"github.com/mariajdab/flight-price/internal/entity"
 )
 
-type ProviderAmadeus struct {
+type Amadeus struct {
 	client *Client
 }
 
-func NewProviderAmadeus(client *Client) *ProviderAmadeus {
-	return &ProviderAmadeus{client: client}
+func NewAdapterAmadeus(client *Client) *Amadeus {
+	return &Amadeus{client: client}
 }
 
-func (p *ProviderAmadeus) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
+func (p *Amadeus) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
 	flights, err := p.client.GetFlights(ctx, criteria)
 
 	if err != nil {

@@ -5,15 +5,15 @@ import (
 	"github.com/mariajdab/flight-price/internal/entity"
 )
 
-type ProviderSkyRapid struct {
+type SkyRapid struct {
 	client *Client
 }
 
-func NewProviderSkyRapid(client *Client) *ProviderSkyRapid {
-	return &ProviderSkyRapid{client: client}
+func NewAdapterSkyRapid(client *Client) *SkyRapid {
+	return &SkyRapid{client: client}
 }
 
-func (p *ProviderSkyRapid) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
+func (p *SkyRapid) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) (entity.FlightSearchResponse, error) {
 	flights, err := p.client.GetFlights(ctx, criteria)
 
 	if err != nil {
