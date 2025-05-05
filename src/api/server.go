@@ -64,16 +64,26 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 	}
 
 	// if authenticated, proceed with the request
-	origin := c.QueryParam("origin")
-	destination := c.QueryParam("destination")
-	date := c.QueryParam("date")
+	//origin := c.QueryParam("origin")
+	//destination := c.QueryParam("destination")
+	//date := c.QueryParam("date")
+
+	// para amadeus
+	//flights := s.flightSvc.SearchFlights(
+	//	context.Background(),
+	//	entity.FlightSearchParam{
+	//		Origin:        "MAD",
+	//		Destination:   "NYC",
+	//		DateDeparture: "2025-05-30",
+	//	},
+	//)
 
 	flights := s.flightSvc.SearchFlights(
 		context.Background(),
 		entity.FlightSearchParam{
-			Origin:        origin,
-			Destination:   destination,
-			DateDeparture: date,
+			Origin:        "JFK",
+			Destination:   "MAD",
+			DateDeparture: "2025-05-17",
 		},
 	)
 
@@ -81,21 +91,6 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 }
 
 func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
-	mux := http.NewServeMux()
-	server := &http.Server{
-		Addr:         ":8443",
-		Handler:      mux,
-		TLSConfig:    tls,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
-	}
-
-	srv := &Server{
-		httpServer: server,
-		flightSvc:  flightSvc,
-	}
-
 	e := echo.New()
 
 	public := e.Group("/public/v1")
@@ -107,6 +102,20 @@ func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
 			return new(jwtCustomClaims)
 		},
 		SigningKey: []byte("secret"),
+	}
+
+	server := &http.Server{
+		Addr:         ":8443",
+		Handler:      e,
+		TLSConfig:    tls,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	srv := &Server{
+		httpServer: server,
+		flightSvc:  flightSvc,
 	}
 
 	private.Use(echojwt.WithConfig(config))
