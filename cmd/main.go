@@ -4,14 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/mariajdab/flight-price/config"
-	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/mariajdab/flight-price/api"
+	"github.com/mariajdab/flight-price/config"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const PROD = "production"
@@ -23,7 +25,7 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:         ":8443",
+		Addr:         ":" + os.Getenv("SERVER_PORT"),
 		Handler:      http.DefaultServeMux,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -55,6 +57,10 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 
+	handler := api.NewServer()
+
+	server.Handler = handler
+
 	go func() {
 		log.Println("Starting server on :8443")
 		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -70,5 +76,4 @@ func main() {
 		log.Fatalf("Error during shutting down the server: %v", err)
 	}
 	log.Println("Shutdown server")
-
 }
