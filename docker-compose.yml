@@ -1,22 +1,25 @@
-version: '3.8'
-
 services:
   flight-price-api:
     build: .
     container_name: flight-price-api
     environment:
-      - APP_ENV=development
-      - SERVER_PORT=8080
-      - CLIENT_TIMEOUT=10s
-      - AMADEUS_BASE_URL=https://test.api.amadeus.com
-      - SKYSCANNER_BASE_URL=https://sky-scanner3.p.rapidapi.com
-      - BASE_APP_URL=https://domain
+      APP_ENV: development
+      SERVER_PORT: 8443
+      CLIENT_TIMEOUT: 10s
+      AMADEUS_BASE_URL: https://test.api.amadeus.com
+      AMADEUS_API_KEY: /run/secrets/amadeus_api_key
+      AMADEUS_API_SECRET: /run/secrets/amadeus_api_secret
+      SKYSCANNER_API_KEY: /run/secrets/skyscanner_api_key
+      GOOGLE_FLIGHTS_API_KEY: /run/secrets/google_flights_api_key
+      SKYSCANNER_BASE_URL: https://flights-sky.p.rapidapi.com
+      APP_BASE_URL: https://domain
     secrets:
       - amadeus_api_key
       - amadeus_api_secret
-      - skyscanner_rapid_api_key
+      - skyscanner_api_key
+      - google_flights_api_key
     ports:
-      - "8080:8080"
+      - "8443:8443"
 
 secrets:
   amadeus_api_key:
@@ -24,4 +27,6 @@ secrets:
   amadeus_api_secret:
     file: ./secrets/amadeus_api_secret.txt
   skyscanner_api_key:
-    file: ./secrets/skyscanner_api_key.txt
+    file: ./secrets/sky_rapid_api_key.txt
+  google_flights_api_key:
+    file: ./secrets/flight_rapid_api_key.txt
