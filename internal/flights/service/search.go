@@ -13,9 +13,6 @@ type FlightService struct {
 }
 
 func NewFlightService(providers ...providers.Flight) *FlightService {
-	// skyscanner
-	// google flights
-	// ademus
 	return &FlightService{
 		providers: providers,
 	}
@@ -26,6 +23,7 @@ func (s *FlightService) SearchFlights(ctx context.Context, criteria entity.Fligh
 		flights, err := provider.SearchFlights(ctx, criteria)
 		if err != nil {
 			fmt.Println("en SearchFlights", err)
+			return []entity.FlightSearchResponse{}
 		}
 		fmt.Println(flights)
 	}
