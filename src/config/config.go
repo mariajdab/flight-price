@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 )
+
+const dockerSecretPathPrefix = "/run/secrets"
 
 type Config struct {
 	ServerPort string `validate:"required,len=4"`
@@ -37,14 +40,43 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	amadeusAPIKey, err := os.ReadFile(filepath.Join(
+		dockerSecretPathPrefix,
+		getEnvOrFail("AMADEUS_API_KEY"),
+	))
+	if err != nil {
+		return nil, err
+	}
+	amadeusAPISecret, err := os.ReadFile(filepath.Join(
+		dockerSecretPathPrefix,
+		getEnvOrFail("AMADEUS_API_SECRET"),
+	))
+	if err != nil {
+		return nil, err
+	}
+	skyRapidAPIKey, err := os.ReadFile(filepath.Join(
+		dockerSecretPathPrefix,
+		getEnvOrFail("SKY_RAPID_API_KEY"),
+	))
+	if err != nil {
+		return nil, err
+	}
+	googleFlightAPIKey, err := os.ReadFile(filepath.Join(
+		dockerSecretPathPrefix,
+		getEnvOrFail("GOOGLE_FLIGHT_RAPID_API_KEY"),
+	))
+	if err != nil {
+		return nil, err
+	}
+
 	c := Config{
 		ServerPort:               getEnvOrFail("SERVER_PORT"),
-		AmadeusAPIKey:            getEnvOrFail("AMADEUS_API_KEY"),
-		AmadeusAPISecret:         getEnvOrFail("AMADEUS_API_SECRET"),
+		AmadeusAPIKey:            string(amadeusAPIKey),
+		AmadeusAPISecret:         string(amadeusAPISecret),
 		AmadeusBaseURL:           getEnvOrFail("AMADEUS_BASE_URL"),
-		SkyRapidAPIKey:           getEnvOrFail("SKY_RAPID_API_KEY"),
+		SkyRapidAPIKey:           string(skyRapidAPIKey),
 		SkyRapidBaseURL:          getEnvOrFail("SKY_RAPID_BASE_URL"),
-		GoogleFlightRapidAPIKey:  getEnvOrFail("GOOGLE_FLIGHT_RAPID_API_KEY"),
+		GoogleFlightRapidAPIKey:  string(googleFlightAPIKey),
 		GoogleFlightRapidBaseURL: getEnvOrFail("GOOGLE_FLIGHT_RAPID_BASE_URL"),
 		AppBaseURL:               getEnvOrFail("APP_BASE_URL"),
 		AppEnv:                   getEnvOrFail("APP_ENV"),
