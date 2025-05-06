@@ -22,8 +22,9 @@ FROM gcr.io/distroless/base-debian11 AS build-release-stage
 
 WORKDIR /
 
-COPY --from=build-stage /src/flight-price /flight-price
+COPY --from=build-stage /src/flight-price flight-price
 COPY --from=build-stage /src/cert.* /
+COPY src/assets assets
 
 EXPOSE 8080
 

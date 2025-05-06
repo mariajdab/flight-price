@@ -6,10 +6,10 @@ services:
       APP_ENV: development
       SERVER_PORT: 8443
       CLIENT_TIMEOUT: 10s
-      AMADEUS_API_KEY: /run/secrets/amadeus_api_key
-      AMADEUS_API_SECRET: /run/secrets/amadeus_api_secret
-      SKY_RAPID_API_KEY: /run/secrets/sky_rapid_api_key
-      GOOGLE_FLIGHT_RAPID_API_KEY: /run/secrets/google_flight_rapid_api_key
+      AMADEUS_API_KEY: amadeus_api_key
+      AMADEUS_API_SECRET: amadeus_api_secret
+      SKY_RAPID_API_KEY: sky_rapid_api_key
+      GOOGLE_FLIGHT_RAPID_API_KEY: google_flight_rapid_api_key
       AMADEUS_BASE_URL: https://test.api.amadeus.com
       SKY_RAPID_BASE_URL: https://flights-sky.p.rapidapi.com
       GOOGLE_FLIGHT_RAPID_BASE_URL: https://google-flights4.p.rapidapi.com
