@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Search</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #003366;
+        }
+        .flight-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            margin-bottom: 15px;
+        }
+        .cheapest-card {
+            background-color: #d1ecf1;
+        }
+        .fastest-card {
+            background-color: #fff3cd;
+        }
+        .scrollable-box {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .segment {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        .segment-details {
+            display: flex;
+            justify-content: space-between;
+        }
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        .error-message {
+            font-weight: bold;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="mb-4">Flight Search</h1>
+    <h2>Find Your Flight</h2>
+
+    {{if not .Token}}
+    <div class="form-group mb-4">
+        <form action="/public/auth" method="POST">
+            <div class="form-group" style="max-width: 200px;">
+                <button type="submit" class="btn btn-primary">Authenticate to Search</button>
+            </div>
+        </form>
+    </div>
+    {{else}}
+    <form action="/private/flights/search" method="POST" class="search-form">
+        <input type="hidden" name="token" value="{{.Token}}">
+        <div class="form-group">
+            <label for="origin">From</label>
+            <input type="text" id="origin" name="origin" class="form-control" placeholder="City or Airport" required>
+        </div>
+        <div class="form-group">
+            <label for="destination">To</label>
+            <input type="text" id="destination" name="destination" class="form-control" placeholder="City or Airport" required>
+        </div>
+        <div class="form-group">
+            <label for="date">Departure Date</label>
+            <input type="date" id="date" name="date" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Search Flights</button>
+        </div>
+    </form>
+    <div class="mt-3 text-muted small">
+        Authenticated with token: {{.TokenPreview}}... <a href="/public/logout">(Logout)</a>
+    </div>
+    {{end}}
+</div>
+
+{{if .FlightResponse}}
+<div class="container">
+    <h2>Available Flights</h2>
+    <h3>{{.FlightResponse.OriginName}} - {{.FlightResponse.DestinationName}}</h3>
+    <div class="flight-results">
+        <div class="flight-card cheapest-card">
+            <div class="flight-info">
+                <h4 class="text-primary">Cheapest Flight</h4>
+                <div>
+                    <span>Price: {{.FlightResponse.Cheapest.Price}}</span>
+                    <span>Duration: {{.FlightResponse.Cheapest.DurationMinutes}} minutes</span>
+                    <span>Segments:</span>
+                    {{range .FlightResponse.Cheapest.Segments}}
+                    <div class="segment">
+                        <div class="segment-details">
+                            <span>Departure: {{.DepartureTime}}</span>
+                            <span>Arrival: {{.ArrivalTime}}</span>
+                            <span>From: {{.DepartureAirport}}</span>
+                            <span>To: {{.DestinationAirport}}</span>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        <div class="flight-card fastest-card">
+            <div class="flight-info">
+                <h4 class="text-warning">Fastest Flight</h4>
+                <div>
+                    <span>Price: {{.FlightResponse.Fastest.Price}}</span>
+                    <span>Duration: {{.FlightResponse.Fastest.DurationMinutes}} minutes</span>
+                    <span>Segments:</span>
+                    {{range .FlightResponse.Fastest.Segments}}
+                    <div class="segment">
+                        <div class="segment-details">
+                            <span>Departure: {{.DepartureTime}}</span>
+                            <span>Arrival: {{.ArrivalTime}}</span>
+                            <span>From: {{.DepartureAirport}}</span>
+                            <span>To: {{.DestinationAirport}}</span>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        {{range .FlightResponse.FlightByProvider}}
+        <div class="flight-card">
+            <h5>Flights by {{.Provider}}</h5>
+            <div class="scrollable-box">
+                {{range .Flights}}
+                <div class="flight-info mb-3 p-3 bg-light border">
+                    <h6>Flight Option</h6>
+                    <span>Price: {{.Price}}</span>
+                    <span>Duration: {{.DurationMinutes}} minutes</span>
+                    <span>Segments:</span>
+                    {{range .Segments}}
+                    <div class="segment">
+                        <div class="segment-details">
+                            <span>Departure: {{.DepartureTime}}</span>
+                            <span>Arrival: {{.ArrivalTime}}</span>
+                            <span>From: {{.DepartureAirport}}</span>
+                            <span>To: {{.DestinationAirport}}</span>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{else if .SearchPerformed}}
+<div class="container">
+    <div class="no-results error-message">No flights found matching your criteria.</div>
+</div>
+{{end}}
+
+<script>
+    // Set default date to tomorrow
+    document.addEventListener('DOMContentLoaded', function() {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const dateInput = document.getElementById('date');
+        if (dateInput) {
+            dateInput.valueAsDate = tomorrow;
+        }
+    });
+</script>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
