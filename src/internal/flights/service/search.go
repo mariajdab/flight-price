@@ -2,10 +2,15 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"github.com/mariajdab/flight-price/internal/entity"
 	"github.com/mariajdab/flight-price/internal/providers"
-	"math"
+	"log"
+	"sync"
+)
+
+const (
+	criteriaCheapest = "cheapest"
+	criteriaFastest  = "fastest"
 )
 
 type FlightService struct {
@@ -19,24 +24,53 @@ func NewFlightService(providers ...providers.Flight) *FlightService {
 }
 
 func (s *FlightService) SearchFlights(ctx context.Context, criteria entity.FlightSearchParam) entity.FlightPriceResponse {
+	var wg sync.WaitGroup
+
 	allCheapest := make([]entity.Flight, 0, len(s.providers))
 	allFastest := make([]entity.Flight, 0, len(s.providers))
 	allProviderFlights := make([]entity.FlightSearchResponse, 0, len(s.providers))
 
-	for _, provider := range s.providers {
-		resp, err := provider.SearchFlights(ctx, criteria)
-		if err != nil {
-			fmt.Println("en SearchFlights", err)
-			return entity.FlightPriceResponse{}
-		}
+	resultChan := make(chan struct {
+		resp         entity.FlightSearchResponse
+		providerName string
+		err          error
+	}, len(s.providers))
 
-		allCheapest = append(allCheapest, resp.Cheapest)
-		allFastest = append(allFastest, resp.Fastest)
-		allProviderFlights = append(allProviderFlights, resp)
+	for _, provider := range s.providers {
+		wg.Add(1)
+		go func(p providers.Flight) {
+			defer wg.Done()
+			resp, err := p.SearchFlights(ctx, criteria)
+			resultChan <- struct {
+				resp         entity.FlightSearchResponse
+				providerName string
+				err          error
+			}{resp, resp.Provider, err}
+		}(provider)
 	}
 
-	cheapest := getGlobalCheapestOrFastestFlight(allCheapest, "cheapest")
-	fastest := getGlobalCheapestOrFastestFlight(allFastest, "fastest")
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	for result := range resultChan {
+		if result.err != nil {
+			log.Printf("provider %s get error in SearchFlights: %v", result.providerName, result.err)
+			continue
+		}
+
+		allCheapest = append(allCheapest, result.resp.Cheapest)
+		allFastest = append(allFastest, result.resp.Fastest)
+		allProviderFlights = append(allProviderFlights, result.resp)
+	}
+
+	if len(allCheapest) == 0 {
+		return entity.FlightPriceResponse{}
+	}
+
+	cheapest := getGlobalBestFlight(allCheapest, criteriaCheapest)
+	fastest := getGlobalBestFlight(allFastest, criteriaFastest)
 
 	return entity.FlightPriceResponse{
 		Cheapest:         cheapest,
@@ -45,21 +79,31 @@ func (s *FlightService) SearchFlights(ctx context.Context, criteria entity.Fligh
 	}
 }
 
-func getGlobalCheapestOrFastestFlight(flights []entity.Flight, criteria string) entity.Flight {
-	bestFlight := flights[0]
-	var fastestDuration = math.MaxInt64
+func getGlobalBestFlight(flights []entity.Flight, criteria string) entity.Flight {
+	if len(flights) == 0 {
+		return entity.Flight{}
+	}
 
-	for _, f := range flights {
-		if criteria == "cheapest" {
+	bestFlight := flights[0]
+
+	switch criteria {
+	case criteriaCheapest:
+		for _, f := range flights[1:] {
 			if f.Price < bestFlight.Price {
 				bestFlight = f
 			}
-		} else if criteria == "fastest" {
-			if f.DurationMinutes < fastestDuration {
+		}
+	case criteriaFastest:
+		bestDuration := bestFlight.DurationMinutes
+		for _, f := range flights[1:] {
+			if f.DurationMinutes < bestDuration {
 				bestFlight = f
-				fastestDuration = f.DurationMinutes
+				bestDuration = f.DurationMinutes
 			}
 		}
+	default:
+		log.Printf("invalid criteria: %s", criteria)
 	}
+
 	return bestFlight
 }
