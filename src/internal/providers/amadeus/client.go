@@ -44,8 +44,6 @@ func (c *Client) GetFlights(ctx context.Context, params entity.FlightSearchParam
 		return entity.FlightSearchResponse{}, err
 	}
 
-	fmt.Println("AQUI")
-
 	offers, err := c.getFlightOffers(ctx, token, params)
 	if err != nil {
 		return entity.FlightSearchResponse{}, fmt.Errorf("error in getFlightOffers: %w", err)
@@ -262,6 +260,7 @@ func createFlightFromOffer(offer entity.FlightOffer, price float64) entity.Fligh
 	}
 
 	return entity.Flight{
+		ProviderName:    providerName,
 		Price:           price,
 		DurationMinutes: durationToMinutes(offer.Itineraries[0].Duration),
 		Segments:        segments,

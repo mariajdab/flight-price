@@ -169,6 +169,7 @@ func createFlightFromOtherFlight(tf entity.OtherFlight) entity.Flight {
 	segments := createSegments(tf.Segments)
 
 	return entity.Flight{
+		ProviderName:    providerName,
 		Price:           tf.Price,
 		DurationMinutes: tf.Duration,
 		Segments:        segments,

@@ -161,6 +161,7 @@ func createFlightFromItinerary(it entity.FlightItinerary) entity.Flight {
 	segments := createSegments(l.Segments)
 
 	return entity.Flight{
+		ProviderName:    providerName,
 		DurationMinutes: l.Duration,
 		Price:           it.Price.Amount,
 		Segments:        segments,
