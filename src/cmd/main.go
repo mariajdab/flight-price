@@ -2,16 +2,17 @@ package main
 
 import (
 	"crypto/tls"
+	"github.com/mariajdab/flight-price/internal/providers/amadeus"
+	"github.com/mariajdab/flight-price/internal/providers/google"
+	"github.com/mariajdab/flight-price/internal/providers/sky"
+	"log"
+	"net/http"
+
 	"github.com/mariajdab/flight-price/api"
 	"github.com/mariajdab/flight-price/config"
 	"github.com/mariajdab/flight-price/internal/entity"
 	services "github.com/mariajdab/flight-price/internal/flights/service"
-	"github.com/mariajdab/flight-price/internal/providers/amadeus"
-	"github.com/mariajdab/flight-price/internal/providers/google"
-	"github.com/mariajdab/flight-price/internal/providers/sky"
 	"golang.org/x/crypto/acme/autocert"
-	"log"
-	"net/http"
 )
 
 const PROD = "production"
@@ -57,7 +58,7 @@ func main() {
 			{
 				Name:    entity.SKyRapidProvider,
 				BaseURL: c.SkyRapidBaseURL,
-				Apikey:  c.GoogleFlightRapidBaseURL,
+				Apikey:  c.SkyRapidAPIKey,
 				Timeout: c.ClientTimeout,
 			},
 			{
