@@ -14,9 +14,15 @@ const (
 	GoogleFlightRapidProvider = "Google Flight Rapid"
 )
 
+type FlightRequest struct {
+	Origin      string `json:"origin"`
+	Destination string `json:"destination"`
+	Date        string `json:"date"`
+}
+
 type Flight struct {
-	ProviderName    string `json:"provider_name,omitempty"`
-	Price           float64
+	ProviderName    string    `json:"provider_name,omitempty"`
+	Price           float64   `json:"price"`
 	DurationMinutes int       `json:"total_duration_minutes"`
 	Segments        []Segment `json:"segments"`
 }

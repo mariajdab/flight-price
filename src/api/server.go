@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/go-playground/validator/v10"
+	"github.com/mariajdab/flight-price/helper"
 	"html/template"
 	"io"
 	"log"
@@ -91,7 +93,7 @@ func (s *Server) homePage(c echo.Context) error {
 	})
 }
 
-// Logout handler - clears the token cookie
+// logout handler - clears the token cookie
 func (s *Server) logout(c echo.Context) error {
 	cookie := new(http.Cookie)
 	cookie.Name = "jwt_token"
@@ -107,12 +109,33 @@ func (s *Server) simpleCheck(c echo.Context) error {
 	return c.String(http.StatusOK, "API is running")
 }
 
-// searchFlightsHandler - handles the POST request from the flight search form
+// handleFlightSearch - handles the POST request from the flight search form
 func (s *Server) handleFlightSearch(c echo.Context) error {
 	// Token is valid, process the search request
 	origin := c.FormValue("origin")
 	destination := c.FormValue("destination")
 	date := c.FormValue("date")
+
+	validate := validator.New()
+	if err := validate.Struct(entity.FlightRequest{
+		Origin:      origin,
+		Destination: destination,
+		Date:        date,
+	}); err != nil {
+		for _, err := range err.(validator.ValidationErrors) {
+			log.Printf("the variable %s is not vaild: %s\n\n", err.Tag(), err.Field())
+			return c.NoContent(http.StatusBadRequest)
+		}
+	}
+
+	orignCode := helper.CityToIATACode(origin)
+	destCode := helper.CityToIATACode(destination)
+
+	if orignCode == "" || destCode == "" {
+		log.Printf("warning: city not support: %s %s", orignCode, destCode)
+		return c.NoContent(http.StatusBadRequest)
+	}
+
 	cookie, err := c.Cookie("jwt_token")
 	tokenValue := ""
 	if err == nil && cookie.Value != "" {
@@ -129,7 +152,6 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 
 	f.OriginName = origin
 	f.DestinationName = destination
-	// Adapt the entity.FlightSearchResult to the Flight struct for rendering
 
 	result := &f
 	if len(result.FlightByProvider) == 0 {
