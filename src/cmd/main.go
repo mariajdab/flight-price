@@ -6,7 +6,9 @@ import (
 	"github.com/mariajdab/flight-price/config"
 	"github.com/mariajdab/flight-price/internal/entity"
 	services "github.com/mariajdab/flight-price/internal/flights/service"
-	amadeus2 "github.com/mariajdab/flight-price/internal/providers/amadeus"
+	"github.com/mariajdab/flight-price/internal/providers/amadeus"
+	"github.com/mariajdab/flight-price/internal/providers/google"
+	"github.com/mariajdab/flight-price/internal/providers/sky"
 	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
@@ -69,11 +71,19 @@ func main() {
 
 	httpClient := http.Client{}
 
-	amadeusClient := amadeus2.NewClient(httpClient, cfg.Providers[0])
-	amadeusAdapter := amadeus2.NewAdapterAmadeus(amadeusClient)
+	amadeusClient := amadeus.NewClient(httpClient, cfg.Providers[0])
+	amadeusAdapter := amadeus.NewAdapterAmadeus(amadeusClient)
+
+	skyClient := sky.NewClient(httpClient, cfg.Providers[1])
+	skyAdapter := sky.NewAdapterSkyRapid(skyClient)
+
+	googleClient := google.NewClient(httpClient, cfg.Providers[2])
+	googleAdapter := google.NewAdapterGoogleFlight(googleClient)
 
 	flightService := services.NewFlightService(
 		amadeusAdapter,
+		skyAdapter,
+		googleAdapter,
 	)
 
 	server := api.New(flightService, &tlsConfig)
