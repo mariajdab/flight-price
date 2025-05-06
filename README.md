@@ -25,18 +25,19 @@ This project is designed to retrieve flight information from three different pro
 
 ## Running the Project (Development)
 1. Generate self-signed certificates (run in `src/` directory):
-   ```
+   `
    openssl req -x509 -newkey rsa:4096 -keyout cert.key -out cert.pem -days 365 -nodes
-```
+`
 2 .Start the container:
-
+`
 docker compose up --build
-
+`
 Server will run on port 8443 with HTTPS.
 
 Authenticate:
-
+`
 https://localhost:8443/public/
+`
 
 After authentication, you'll be redirected to the flight search interface.
 
