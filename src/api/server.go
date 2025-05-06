@@ -5,8 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/mariajdab/flight-price/internal/entity"
-	"github.com/mariajdab/flight-price/internal/flights/service"
+	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -15,15 +15,30 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/mariajdab/flight-price/internal/entity"
+	services "github.com/mariajdab/flight-price/internal/flights/service"
 )
 
-// Flight represents a flight
-type Flight struct {
-	Origin      string `json:"origin"`
-	Destination string `json:"destination"`
-	Date        string `json:"date"`
+var funcMap = template.FuncMap{
+	"subtract": func(a, b int) int { return a - b },
+}
+
+type TemplateRenderer struct {
+	templates *template.Template
+}
+
+func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+// PageData holds all data passed to templates
+type PageData struct {
+	FlightResponse  *entity.FlightPriceResponse
+	SearchPerformed bool
+	Token           string
+	TokenPreview    string // First few characters of token for display
 }
 
 type Server struct {
@@ -35,7 +50,8 @@ type jwtCustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-func generateTokenHandler(c echo.Context) error {
+// Authentication handler - generates a token and sets it as a cookie
+func (s *Server) authenticate(c echo.Context) error {
 	claims := &jwtCustomClaims{
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
@@ -44,31 +60,66 @@ func generateTokenHandler(c echo.Context) error {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	// Generate encoded token and send it as response.
+	// Generate encoded token
 	t, err := token.SignedString([]byte("secret"))
 	if err != nil {
 		return err
 	}
 
-	return c.String(http.StatusOK, t)
+	// Set token in cookie
+	cookie := new(http.Cookie)
+	cookie.Name = "jwt_token"
+	cookie.Value = t
+	cookie.Expires = time.Now().Add(24 * time.Hour)
+	cookie.Path = "/"
+	c.SetCookie(cookie)
+
+	// Redirect back to the home page
+	return c.Redirect(http.StatusSeeOther, "/public/")
 }
 
-// searchFlightsHandler handles the GET /flights/search request
+// Home page handler - checks for the token cookie
+func (s *Server) homePage(c echo.Context) error {
+	tokenValue := ""
+	cookie, err := c.Cookie("jwt_token")
+	if err == nil && cookie.Value != "" {
+		tokenValue = cookie.Value
+	}
+	return c.Render(http.StatusOK, "index.html", PageData{
+		Token:        tokenValue,
+		TokenPreview: tokenValue,
+	})
+}
+
+// Logout handler - clears the token cookie
+func (s *Server) logout(c echo.Context) error {
+	cookie := new(http.Cookie)
+	cookie.Name = "jwt_token"
+	cookie.Value = ""
+	cookie.Expires = time.Now().Add(-1 * time.Hour)
+	cookie.Path = "/"
+	c.SetCookie(cookie)
+	return c.Redirect(http.StatusSeeOther, "/public/")
+}
+
+// Simple check handler (no authentication required)
+func (s *Server) simpleCheck(c echo.Context) error {
+	return c.String(http.StatusOK, "API is running")
+}
+
+// searchFlightsHandler - handles the POST request from the flight search form
 func (s *Server) handleFlightSearch(c echo.Context) error {
-	// authenticate the request using JWT
-	user := c.Get("user")
-	token := user.(*jwt.Token)
-	_, ok := token.Claims.(*jwtCustomClaims)
-	if !ok || !token.Valid {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+	// Token is valid, process the search request
+	origin := c.FormValue("origin")
+	destination := c.FormValue("destination")
+	date := c.FormValue("date")
+	cookie, err := c.Cookie("jwt_token")
+	tokenValue := ""
+	if err == nil && cookie.Value != "" {
+		tokenValue = cookie.Value
 	}
 
-	// if authenticated, proceed with the request
-	origin := c.QueryParam("origin")
-	destination := c.QueryParam("destination")
-	date := c.QueryParam("date")
-
-	flights := s.flightSvc.SearchFlights(
+	f := s.flightSvc.SearchFlights(
 		context.Background(),
 		entity.FlightSearchParam{
 			Origin:        origin,
@@ -76,22 +127,36 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 			DateDeparture: date,
 		})
 
-	return c.JSON(http.StatusOK, flights)
+	f.OriginName = origin
+	f.DestinationName = destination
+	// Adapt the entity.FlightSearchResult to the Flight struct for rendering
+
+	result := &f
+	if len(result.FlightByProvider) == 0 {
+		result = nil
+	}
+
+	return c.Render(http.StatusOK, "index.html", PageData{
+		FlightResponse:  result,
+		SearchPerformed: true,
+		Token:           tokenValue,
+		TokenPreview:    tokenValue,
+	})
 }
 
 func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
 	e := echo.New()
 
-	public := e.Group("/public/v1")
-	public.GET("/generate-token", generateTokenHandler)
-	public.File("/", "./assets/index.html")
-	private := e.Group("/private/v1")
-	config := echojwt.Config{
-		NewClaimsFunc: func(c echo.Context) jwt.Claims {
-			return new(jwtCustomClaims)
-		},
-		SigningKey: []byte("secret"),
+	// Set up middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+
+	// Initialize template renderer
+	renderer := &TemplateRenderer{
+		templates: template.Must(template.New("").Funcs(funcMap).ParseGlob("assets/templates/*.html")),
 	}
+	e.Renderer = renderer
 
 	server := &http.Server{
 		Addr:         ":8443",
@@ -107,8 +172,19 @@ func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
 		flightSvc:  flightSvc,
 	}
 
-	private.Use(echojwt.WithConfig(config))
-	private.GET("/flights/search", srv.handleFlightSearch)
+	public := e.Group("/public")
+	public.GET("/", srv.homePage)
+	public.POST("/auth", srv.authenticate)
+	public.GET("/logout", srv.logout)
+	public.GET("/api/check", srv.simpleCheck) // Simple check endpoint
+
+	private := e.Group("/private")
+	private.POST("/flights/search", srv.handleFlightSearch)
+
+	index := e.Group("/")
+	index.GET("/", func(c echo.Context) error {
+		return c.Redirect(http.StatusOK, "/public/")
+	})
 
 	return srv
 }
