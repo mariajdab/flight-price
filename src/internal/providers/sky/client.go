@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mariajdab/flight-price/internal/entity"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -54,8 +55,6 @@ func (c *Client) getFlightItineraries(ctx context.Context, params entity.FlightS
 		return nil, err
 	}
 
-	//date := params.DateDeparture.Format(time.DateOnly)
-
 	// building the query parameters
 	query := url.Values{}
 	query.Set("fromEntityId", params.Origin)
@@ -84,17 +83,16 @@ func (c *Client) getFlightItineraries(ctx context.Context, params entity.FlightS
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get flight offers from amadeus: %s", resp.Body)
+		errorBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get flight itineraries (status %d): %s", resp.StatusCode, string(errorBody))
 	}
-
 	var flights entity.FlightSkyResp
-
 	if err := json.NewDecoder(resp.Body).Decode(&flights); err != nil {
-		log.Println("internal error during decode response from amadeus provider", err)
+		log.Println("internal error during decode response from sky provider", err)
 		return nil, err
 	}
 
-	return flights.Data, nil
+	return flights.Data.Itineraries, nil
 }
 
 func itineraryPreProcessResponse(itineraries []entity.FlightItinerary) (entity.FlightSearchResponse, error) {
