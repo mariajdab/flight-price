@@ -49,11 +49,11 @@ type FlightAmadeusResp struct {
 }
 
 type FlightSkyResp struct {
-	Data []FlightItinerary `json:"itineraries"`
+	Data DataSky `json:"data"`
 }
 
 type FlightGoogleResp struct {
-	Data Data `json:"data"`
+	Data DataGoogle `json:"data"`
 }
 
 // FlightOffer represent amadeus response of a flight search
@@ -75,8 +75,8 @@ type FlightItinerary struct {
 	Legs []struct {
 		Segments  []SegmentSky `json:"segments"`
 		Duration  int          `json:"durationInMinutes"`
-		Departure time.Time    `json:"departure"`
-		Arrival   time.Time    `json:"arrival"`
+		Departure string       `json:"departure"`
+		Arrival   string       `json:"arrival"`
 	} `json:"legs"`
 }
 
@@ -137,6 +137,10 @@ type ProvConfig struct {
 	Providers []Provider
 }
 
-type Data struct {
+type DataGoogle struct {
 	OtherFlights []OtherFlight `json:"otherFlights"`
+}
+
+type DataSky struct {
+	Itineraries []FlightItinerary `json:"itineraries"`
 }
