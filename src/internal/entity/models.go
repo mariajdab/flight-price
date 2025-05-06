@@ -15,6 +15,7 @@ const (
 )
 
 type Flight struct {
+	ProviderName    string `json:"provider_name,omitempty"`
 	Price           float64
 	DurationMinutes int       `json:"total_duration_minutes"`
 	Segments        []Segment `json:"segments"`
@@ -34,14 +35,20 @@ type FlightSearchParam struct {
 }
 
 type FlightSearchResponse struct {
-	OriginName      string   `json:"originName"`
-	DestinationName string   `json:"destinationName"`
-	Provider        string   `json:"provider"`
-	Currency        string   `json:"currency"`
-	Cheapest        Flight   `json:"cheapest"`
-	Fastest         Flight   `json:"fastest"`
-	Flights         []Flight `json:"flights"`
-	Error           error    `json:"error"`
+	Provider string   `json:"provider"`
+	Currency string   `json:"currency"`
+	Flights  []Flight `json:"flights"`
+	//Error    error    `json:"error"`
+	Cheapest Flight `json:"cheapest"`
+	Fastest  Flight `json:"fastest"`
+}
+
+type FlightPriceResponse struct {
+	OriginName       string                 `json:"originName"`
+	DestinationName  string                 `json:"destinationName"`
+	Cheapest         Flight                 `json:"cheapest"`
+	Fastest          Flight                 `json:"fastest"`
+	FlightByProvider []FlightSearchResponse `json:"flightByProvider"`
 }
 
 type FlightAmadeusResp struct {
@@ -66,6 +73,23 @@ type FlightOffer struct {
 	} `json:"price"`
 }
 
+type ItinerariesAmadeus struct {
+	Duration string           `json:"duration"`
+	Segments []SegmentAmadeus `json:"segments"`
+}
+
+type SegmentAmadeus struct {
+	Departure struct {
+		IataCode string `json:"iataCode"`
+		At       string `json:"at"`
+	} `json:"departure"`
+	Arrival struct {
+		IataCode string `json:"iataCode"`
+		At       string `json:"at"`
+	} `json:"arrival"`
+	CarrierCode string `json:"carrierCode"`
+}
+
 // FlightItinerary represent flights-sky response of a flight search
 type FlightItinerary struct {
 	ID    string `json:"id"`
@@ -86,23 +110,6 @@ type OtherFlight struct {
 	Duration int              `json:"duration"`
 	Segments []SegmentGoogleF `json:"segments"`
 	Stops    int              `json:"stops"`
-}
-
-type ItinerariesAmadeus struct {
-	Duration string           `json:"duration"`
-	Segments []SegmentAmadeus `json:"segments"`
-}
-
-type SegmentAmadeus struct {
-	Departure struct {
-		IataCode string `json:"iataCode"`
-		At       string `json:"at"`
-	} `json:"departure"`
-	Arrival struct {
-		IataCode string `json:"iataCode"`
-		At       string `json:"at"`
-	} `json:"arrival"`
-	CarrierCode string `json:"carrierCode"`
 }
 
 type SegmentGoogleF struct {
