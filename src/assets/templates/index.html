@@ -107,7 +107,7 @@
             <div class="flight-info">
                 <h4 class="text-primary">Cheapest Flight</h4>
                 <div>
-                    <span>Price: {{.FlightResponse.Cheapest.Price}}</span>
+                    <span>Price: ${{.FlightResponse.Cheapest.Price}}</span>
                     <span>Duration: {{.FlightResponse.Cheapest.DurationMinutes}} minutes</span>
                     <span>Segments:</span>
                     {{range .FlightResponse.Cheapest.Segments}}
@@ -127,7 +127,7 @@
             <div class="flight-info">
                 <h4 class="text-warning">Fastest Flight</h4>
                 <div>
-                    <span>Price: {{.FlightResponse.Fastest.Price}}</span>
+                    <span>Price: ${{.FlightResponse.Fastest.Price}}</span>
                     <span>Duration: {{.FlightResponse.Fastest.DurationMinutes}} minutes</span>
                     <span>Segments:</span>
                     {{range .FlightResponse.Fastest.Segments}}
@@ -150,7 +150,7 @@
                 {{range .Flights}}
                 <div class="flight-info mb-3 p-3 bg-light border">
                     <h6>Flight Option</h6>
-                    <span>Price: {{.Price}}</span>
+                    <span>Price: ${{.Price}}</span>
                     <span>Duration: {{.DurationMinutes}} minutes</span>
                     <span>Segments:</span>
                     {{range .Segments}}
