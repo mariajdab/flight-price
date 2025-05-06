@@ -64,28 +64,17 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 	}
 
 	// if authenticated, proceed with the request
-	//origin := c.QueryParam("origin")
-	//destination := c.QueryParam("destination")
-	//date := c.QueryParam("date")
-
-	// para amadeus
-	//flights := s.flightSvc.SearchFlights(
-	//	context.Background(),
-	//	entity.FlightSearchParam{
-	//		Origin:        "MAD",
-	//		Destination:   "NYC",
-	//		DateDeparture: "2025-05-30",
-	//	},
-	//)
+	origin := c.QueryParam("origin")
+	destination := c.QueryParam("destination")
+	date := c.QueryParam("date")
 
 	flights := s.flightSvc.SearchFlights(
 		context.Background(),
 		entity.FlightSearchParam{
-			Origin:        "JFK",
-			Destination:   "MAD",
-			DateDeparture: "2025-05-17",
-		},
-	)
+			Origin:        origin,
+			Destination:   destination,
+			DateDeparture: date,
+		})
 
 	return c.JSON(http.StatusOK, flights)
 }
@@ -95,7 +84,7 @@ func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
 
 	public := e.Group("/public/v1")
 	public.GET("/generate-token", generateTokenHandler)
-
+	public.File("/", "./assets/index.html")
 	private := e.Group("/private/v1")
 	config := echojwt.Config{
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
