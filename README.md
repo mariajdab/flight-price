@@ -28,15 +28,14 @@ This project is designed to retrieve flight information from three different pro
    `
    openssl req -x509 -newkey rsa:4096 -keyout cert.key -out cert.pem -days 365 -nodes
 `
-
-2 .Start the container:
+2. Start the container:
 `
 docker compose up --build
 `
 
-Server will run on port 8443 with HTTPS.
+4. Server will run on port 8443 with HTTPS.
 
-Authenticate:
+3. Authenticate:
 `
 https://localhost:8443/public/
 `
