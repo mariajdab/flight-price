@@ -1,4 +1,4 @@
-# Flight Information Aggregator
+# Flight service
 
 This project is designed to retrieve flight information from three different providers—**Amadeus**, **Sky (Rapid API)**, and **Google Flights (Rapid API)**—given an origin, destination, and date.
 
