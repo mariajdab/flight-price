@@ -2,10 +2,11 @@ package services
 
 import (
 	"context"
-	"github.com/mariajdab/flight-price/internal/entity"
-	"github.com/mariajdab/flight-price/internal/providers"
 	"log"
 	"sync"
+
+	"github.com/mariajdab/flight-price/internal/entity"
+	"github.com/mariajdab/flight-price/internal/providers"
 )
 
 const (
@@ -73,6 +74,8 @@ func (s *FlightService) SearchFlights(ctx context.Context, criteria entity.Fligh
 	fastest := getGlobalBestFlight(allFastest, criteriaFastest)
 
 	return entity.FlightPriceResponse{
+		OriginName:       criteria.Origin,
+		DestinationName:  criteria.Destination,
 		Cheapest:         cheapest,
 		Fastest:          fastest,
 		FlightByProvider: allProviderFlights,

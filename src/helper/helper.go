@@ -28,7 +28,7 @@ func CityToIATACode(cityName string) string {
 
 	code, exists := cityToIATA[normalizedCity]
 	if !exists {
-		log.Println(fmt.Errorf("no se encontró código IATA para la ciudad: %s", cityName))
+		log.Println(fmt.Errorf("IATA code was not found for the city: %s", cityName))
 		return ""
 	}
 	return code
@@ -56,7 +56,7 @@ func CityToGoogleCode(cityName string) string {
 
 	code, exists := cityToGoogleCode[normalizedCity]
 	if !exists {
-		log.Println(fmt.Errorf("no se encontró código IATA para la ciudad: %s", cityName))
+		log.Println(fmt.Errorf("google flight code was not found for the city: %s", cityName))
 		return ""
 	}
 	return code
@@ -84,7 +84,7 @@ func CityToSkyCode(cityName string) string {
 
 	code, exists := cityToSkyCode[normalizedCity]
 	if !exists {
-		log.Println(fmt.Errorf("no se encontró código IATA para la ciudad: %s", cityName))
+		log.Println(fmt.Errorf("sky code was not found for the city: %s", cityName))
 		return ""
 	}
 	return code

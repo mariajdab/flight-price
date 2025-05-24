@@ -2,9 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"github.com/mariajdab/flight-price/internal/providers/amadeus"
-	"github.com/mariajdab/flight-price/internal/providers/google"
-	"github.com/mariajdab/flight-price/internal/providers/sky"
 	"log"
 	"net/http"
 
@@ -12,6 +9,9 @@ import (
 	"github.com/mariajdab/flight-price/config"
 	"github.com/mariajdab/flight-price/internal/entity"
 	services "github.com/mariajdab/flight-price/internal/flights/service"
+	"github.com/mariajdab/flight-price/internal/providers/amadeus"
+	"github.com/mariajdab/flight-price/internal/providers/google"
+	"github.com/mariajdab/flight-price/internal/providers/sky"
 	"golang.org/x/crypto/acme/autocert"
 )
 

@@ -14,10 +14,19 @@ const (
 	GoogleFlightRapidProvider = "Google Flight Rapid"
 )
 
-type FlightRequest struct {
-	Origin      string `json:"origin"`
-	Destination string `json:"destination"`
-	Date        string `json:"date"`
+type FlightSearchParam struct {
+	Origin        string `json:"origin"`
+	Destination   string `json:"destination"`
+	DateDeparture string `json:"date"`
+}
+
+type FlightSearchResponse struct {
+	Provider string   `json:"provider"`
+	Currency string   `json:"currency"`
+	Flights  []Flight `json:"flights"`
+	Cheapest Flight   `json:"cheapest"`
+	Fastest  Flight   `json:"fastest"`
+	//Error    error    `json:"error"`
 }
 
 type Flight struct {
@@ -32,21 +41,6 @@ type Segment struct {
 	DestinationAirport string `json:"destinationAirport"`
 	DepartureTime      string `json:"departureTime"`
 	ArrivalTime        string `json:"arrivalTime"`
-}
-
-type FlightSearchParam struct {
-	Origin        string
-	Destination   string
-	DateDeparture string
-}
-
-type FlightSearchResponse struct {
-	Provider string   `json:"provider"`
-	Currency string   `json:"currency"`
-	Flights  []Flight `json:"flights"`
-	//Error    error    `json:"error"`
-	Cheapest Flight `json:"cheapest"`
-	Fastest  Flight `json:"fastest"`
 }
 
 type FlightPriceResponse struct {

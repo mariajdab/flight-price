@@ -5,8 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	"github.com/mariajdab/flight-price/helper"
 	"html/template"
 	"io"
 	"log"
@@ -16,9 +14,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/mariajdab/flight-price/helper"
 	"github.com/mariajdab/flight-price/internal/entity"
 	services "github.com/mariajdab/flight-price/internal/flights/service"
 )
@@ -45,7 +45,7 @@ type PageData struct {
 
 type Server struct {
 	httpServer *http.Server
-	flightSvc  *services.FlightService
+	flight     *services.FlightService
 }
 
 type jwtCustomClaims struct {
@@ -116,12 +116,14 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 	destination := c.FormValue("destination")
 	date := c.FormValue("date")
 
+	req := entity.FlightSearchParam{
+		Origin:        origin,
+		Destination:   destination,
+		DateDeparture: date,
+	}
+
 	validate := validator.New()
-	if err := validate.Struct(entity.FlightRequest{
-		Origin:      origin,
-		Destination: destination,
-		Date:        date,
-	}); err != nil {
+	if err := validate.Struct(req); err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			log.Printf("the variable %s is not vaild: %s\n\n", err.Tag(), err.Field())
 			return c.NoContent(http.StatusBadRequest)
@@ -142,18 +144,9 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 		tokenValue = cookie.Value
 	}
 
-	f := s.flightSvc.SearchFlights(
-		context.Background(),
-		entity.FlightSearchParam{
-			Origin:        origin,
-			Destination:   destination,
-			DateDeparture: date,
-		})
+	resp := s.flight.SearchFlights(context.Background(), req)
 
-	f.OriginName = origin
-	f.DestinationName = destination
-
-	result := &f
+	result := &resp
 	if len(result.FlightByProvider) == 0 {
 		result = nil
 	}
@@ -166,7 +159,7 @@ func (s *Server) handleFlightSearch(c echo.Context) error {
 	})
 }
 
-func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
+func New(flightService *services.FlightService, tls *tls.Config) *Server {
 	e := echo.New()
 
 	// Set up middleware
@@ -191,7 +184,7 @@ func New(flightSvc *services.FlightService, tls *tls.Config) *Server {
 
 	srv := &Server{
 		httpServer: server,
-		flightSvc:  flightSvc,
+		flight:     flightService,
 	}
 
 	public := e.Group("/public")

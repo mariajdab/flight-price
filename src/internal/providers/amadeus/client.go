@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mariajdab/flight-price/internal/entity"
 	"io"
 	"log"
 	"math"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mariajdab/flight-price/internal/entity"
 )
 
 const providerName = "Amadeus"

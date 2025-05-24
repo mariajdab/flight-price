@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+
 	"github.com/mariajdab/flight-price/internal/entity"
 )
 

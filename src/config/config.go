@@ -70,16 +70,16 @@ func Load() (*Config, error) {
 	}
 
 	c := Config{
+		AppEnv:                   getEnvOrFail("APP_ENV"),
 		ServerPort:               getEnvOrFail("SERVER_PORT"),
+		AppBaseURL:               getEnvOrFail("APP_BASE_URL"),
+		AmadeusBaseURL:           getEnvOrFail("AMADEUS_BASE_URL"),
+		SkyRapidBaseURL:          getEnvOrFail("SKY_RAPID_BASE_URL"),
+		GoogleFlightRapidBaseURL: getEnvOrFail("GOOGLE_FLIGHT_RAPID_BASE_URL"),
 		AmadeusAPIKey:            string(amadeusAPIKey),
 		AmadeusAPISecret:         string(amadeusAPISecret),
-		AmadeusBaseURL:           getEnvOrFail("AMADEUS_BASE_URL"),
 		SkyRapidAPIKey:           string(skyRapidAPIKey),
-		SkyRapidBaseURL:          getEnvOrFail("SKY_RAPID_BASE_URL"),
 		GoogleFlightRapidAPIKey:  string(googleFlightAPIKey),
-		GoogleFlightRapidBaseURL: getEnvOrFail("GOOGLE_FLIGHT_RAPID_BASE_URL"),
-		AppBaseURL:               getEnvOrFail("APP_BASE_URL"),
-		AppEnv:                   getEnvOrFail("APP_ENV"),
 		ClientTimeout:            clientTimeout,
 	}
 	if err := validate(c); err != nil {

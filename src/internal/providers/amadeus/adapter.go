@@ -3,6 +3,7 @@ package amadeus
 import (
 	"context"
 	"errors"
+
 	"github.com/mariajdab/flight-price/helper"
 	"github.com/mariajdab/flight-price/internal/entity"
 )
